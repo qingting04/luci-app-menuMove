@@ -99,7 +99,7 @@ apk add --allow-untrusted /tmp/luci-i18n-menuMove-zh-cn_*.apk
 > `--allow-untrusted` 是因为本地/CI 编译的包没有官方签名。
 > ImmortalWrt 24.10 及更早（opkg）用 `opkg install /tmp/luci-app-menuMove_*.ipk`。
 
-装完不需要重启，直接刷新 LuCI，在 **系统 → 菜单标签** 里配置。
+装完不需要重启，直接刷新 LuCI，在 **服务 → 菜单标签** 里配置。
 
 ## 本地编译（有 OpenWrt / ImmortalWrt 源码树时）
 
@@ -117,7 +117,7 @@ make package/luci-app-menuMove/compile V=s
 
 ## 使用
 
-打开 LuCI（`http://192.168.1.1`）→ **系统 → 菜单标签**：
+打开 LuCI（`http://192.168.1.1`）→ **服务 → 菜单标签**：
 
 - **常规**：总开关（关掉就恢复原始菜单）
 - **移动规则**：每条规则 = 要移动的标签（原路径）+ 目标分区 + 排序 + 新名称（可选）+ 隐藏原位置
@@ -220,7 +220,7 @@ fork 后如需修改 workflow 顶部的 4 个变量（纯 LuCI 插件其实不�
 
 ## 说明
 
-- **包名 / LuCI 侧标识是小驼峰**：`luci-app-menuMove`、菜单路径 `admin/system/menuMove`、视图 `menuMove/overview`、权限组 `luci-app-menuMove`；
+- **包名 / LuCI 侧标识是小驼峰**：`luci-app-menuMove`、菜单路径 `admin/services/menuMove`、视图 `menuMove/overview`、权限组 `luci-app-menuMove`；
   但 **UCI config 名、ubus 对象名、init.d 脚本名、命令行名保持 kebab-case**：`menu-move` / `menu_move`（OpenWrt 系统机制约定）。
 - **LuCI 版本**：JS 框架需 LuCI 23.05+，ImmortalWrt 23.05 / 24.10 / 25.x 均支持。
 - 改包名只需改目录名 + `PKG_NAME`；`luci.mk` 用目录名推导 `LUCI_BASENAME`（这里是 `menuMove`），所以翻译包叫 `luci-i18n-menuMove-zh-cn`。

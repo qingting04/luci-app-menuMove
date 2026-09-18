@@ -1,7 +1,7 @@
 {
-	"admin/system/menuMove": {
+	"admin/services/menuMove": {
 		"title": "Menu Tabs",
-		"order": 95,
+		"order": 90,
 		"action": {
 			"type": "view",
 			"path": "menuMove/overview"
