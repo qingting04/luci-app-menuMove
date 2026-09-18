@@ -12,126 +12,108 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-msgid " (original hidden)"
-msgstr ""
-
-msgid "-- please choose --"
+msgid "The command failed with exit code %s."
 msgstr ""
 
 msgid "Configuration"
 msgstr ""
 
-msgid "Enable menu moving"
+msgid "enabled"
 msgstr ""
 
-msgid "Enabled"
-msgstr ""
-
-msgid "Failed to regenerate the menu: %s"
-msgstr ""
-
-msgid "General"
-msgstr ""
-
-msgid "Generated file"
-msgstr ""
-
-msgid "Hide the original tab"
-msgstr ""
-
-msgid "Menu Tabs"
-msgstr ""
-
-msgid "Menu layout"
-msgstr ""
-
-msgid "Menu layout applied - reloading the interface."
-msgstr ""
-
-msgid "Move menu entries (tabs) of the LuCI web interface to another section, for example move the tabs below \"NAS\" into \"Services\". The original entry is hidden, the same page is registered below the target section instead."
-msgstr ""
-
-msgid "Move rules"
-msgstr ""
-
-msgid "New title"
-msgstr ""
-
-msgid "Note: the marker file %s exists, so hidden entries are visible again."
-msgstr ""
-
-msgid "Nothing to do - the menu is left untouched."
-msgstr ""
-
-msgid "Order"
-msgstr ""
-
-msgid "Override file written: %s"
-msgstr ""
-
-msgid "Path"
-msgstr ""
-
-msgid "Pick the tab to move and the section it should live in. \"order\" is the sort weight inside the target section (lower comes first, empty keeps the original value) and \"new title\" renames the tab; to only reorder a tab, set the target to its own section. Rules whose source entry no longer exists (app uninstalled) are skipped and reported."
-msgstr ""
-
-msgid "Regenerate menu now"
-msgstr ""
-
-msgid "Reload interface"
+msgid "disabled"
 msgstr ""
 
 msgid "Rules"
 msgstr ""
 
-msgid "Show the current menu entries (%d)"
+msgid "Generated file"
 msgstr ""
 
-msgid "Status"
+msgid "present"
 msgstr ""
 
-msgid "Tab to move"
-msgstr ""
-
-msgid "Target section"
+msgid "missing"
 msgstr ""
 
 msgid "The generated file is outdated - regenerate it."
 msgstr ""
 
-msgid "The interface will reload now."
+msgid "Note: the marker file %s exists, so hidden entries are visible again."
 msgstr ""
 
-msgid "The override file was removed (menu move disabled or no rules)."
+msgid "Menu override regenerated: %d rule(s) applied."
 msgstr ""
 
-msgid "The rpcd plugin \"menu_move\" is not reachable - the menu cannot be regenerated from here. Run \"/etc/init.d/rpcd reload\" on the router (or reinstall the package) and reload this page."
+msgid " (original hidden)"
+msgstr ""
+
+msgid "Menu layout"
+msgstr ""
+
+msgid "Reload interface"
+msgstr ""
+
+msgid "Failed to regenerate the menu: %s"
+msgstr ""
+
+msgid "Menu layout applied - reloading the interface."
+msgstr ""
+
+msgid "Menu Tabs"
+msgstr ""
+
+msgid "General"
+msgstr ""
+
+msgid "Enable menu moving"
+msgstr ""
+
+msgid "Move rules"
+msgstr ""
+
+msgid "Tab to move"
+msgstr ""
+
+msgid "-- please choose --"
+msgstr ""
+
+msgid "not found"
+msgstr ""
+
+msgid "Target section"
+msgstr ""
+
+msgid "Order"
+msgstr ""
+
+msgid "New title"
+msgstr ""
+
+msgid "keep original"
+msgstr ""
+
+msgid "Hide the original tab"
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Regenerate menu now"
+msgstr ""
+
+msgid "Show the current menu entries (%d)"
+msgstr ""
+
+msgid "Path"
 msgstr ""
 
 msgid "Title"
 msgstr ""
 
 msgid "Type"
-msgstr ""
-
-msgid "When disabled the override file is removed and the original menu layout is restored."
-msgstr ""
-
-msgid "disabled"
-msgstr ""
-
-msgid "enabled"
-msgstr ""
-
-msgid "keep original"
-msgstr ""
-
-msgid "missing"
-msgstr ""
-
-msgid "not found"
-msgstr ""
-
-msgid "present"
 msgstr ""
 

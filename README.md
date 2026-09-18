@@ -47,11 +47,12 @@ Status
 - 可视化配置：下拉框直接列出**当前真实存在的菜单路径**，不用背路径、不会写错
 - 支持整段移动（连同子树）、原地调整排序、改显示名、隐藏原位置
 - 状态面板：覆盖文件是否存在 / 是否已过期，一键「立即重新生成」
-- 网页点「保存并应用」自动重新生成并刷新界面；SSH 里 `uci commit` 也会自动重生成（procd config.change 触发器）
+- 网页「保存并应用」和「立即重新生成」都直接调用 `/usr/bin/menu-move`（走系统自带的 `file` ubus 对象），**不依赖本插件自己的 ubus 插件**；命令的报错原文会直接显示在页面上，方便定位
+- SSH 里 `uci commit menu-move` 会自动触发重新生成（procd `config.change` 触发器），也可以手动 `/etc/init.d/menu-move reload`
 - 权限沿用原条目（克隆时保留 `depends.acl`），移动后的标签谁能看见跟原来一致
 - 命令行：`menu-move status | apply | check | paths | json`
 - 中文界面（`zh_Hans` 翻译包）
-- GitHub Actions 云端编译，本地零环境；本地测试 60+12 项不需要路由器
+- GitHub Actions 云端编译，本地零环境；本地 60+12 项测试 + `test/check.py` 一致性检查，不需要路由器
 
 ## 快速开始：fork 编译（推荐，无需本地环境）
 
@@ -83,7 +84,7 @@ env:
 Actions → 最近一次运行 → **Summary** → 下载 `luci-app-menuMove` artifact，解压得到：
 
 ```
-luci-app-menuMove_1.0.0-1_all.apk           # 主包
+luci-app-menuMove_1.0.0-2_all.apk           # 主包
 luci-i18n-menuMove-zh-cn_*.apk              # 中文翻译包（workflow 里已打开 LUCI_LANG_zh_Hans）
 ```
 
@@ -121,7 +122,7 @@ make package/luci-app-menuMove/compile V=s
 
 - **常规**：总开关（关掉就恢复原始菜单）
 - **移动规则**：每条规则 = 要移动的标签（原路径）+ 目标分区 + 排序 + 新名称（可选）+ 隐藏原位置
-- **状态**：「立即重新生成」/「刷新界面」按钮，以及覆盖文件是否存在、是否过期
+- **状态**：「立即重新生成」/「刷新界面」按钮，以及覆盖文件是否存在、是否过期；命令报错会原样显示在这里
 - 展开可以看**当前所有菜单条目**（路径 / 标题 / 类型），写规则时对照着看
 
 保存 / 保存并应用后会自动重新生成菜单并刷新页面。
@@ -174,13 +175,15 @@ uci commit menu-move
 │   │   ├── etc/config/menu-move             #   UCI 配置（规则）
 │   │   ├── etc/init.d/menu-move             #   procd 触发器：配置一改就重新生成
 │   │   ├── etc/uci-defaults/90-luci-app-menuMove   # 安装后立即生成一次
-│   │   ├── usr/bin/menu-move                #   命令行工具
-│   │   ├── usr/share/rpcd/ucode/luci.menu-move   # ubus 对象 menu_move（界面调用，rpcd ucode 插件）
+│   │   ├── usr/bin/menu-move                #   命令行工具（网页界面也调它）
+│   │   ├── usr/share/rpcd/ucode/luci.menu-move   # ubus 对象 menu_move（可选 API，界面不依赖它）
 │   │   ├── usr/share/luci/menu.d/luci-app-menuMove.json   # 本插件自己的菜单入口
-│   │   └── usr/share/rpcd/acl.d/luci-app-menuMove.json    # 权限声明
+│   │   └── usr/share/rpcd/acl.d/luci-app-menuMove.json    # 权限声明（uci + file exec + ubus）
 │   └── test/                                # 本地测试（不需要路由器）
 │       ├── run.sh  test.uc                  #   60 项单元检查 + CLI/插件冒烟
 │       ├── simulate_menu.py                 #   复刻 LuCI 服务端+前端菜单算法做仿真验证（12 项）
+│       ├── check.py                         #   翻译覆盖 / ACL 与视图调用一致性 / 模块名 / JSON / JS 语法
+│       ├── apk_info.py                      #   列出 apk 内文件（CI 用它打印装机路径）
 │       └── fixtures/                        #   假的 menu.d / UCI / Lua controller
 └── .github/workflows/build.yml              # GitHub Actions 云端编译
 ```
@@ -216,23 +219,36 @@ fork 后如需修改 workflow 顶部的 4 个变量（纯 LuCI 插件其实不�
 3. **新装插件后菜单变了**，点一下「立即重新生成」；界面上会显示「已过期」，`menu-move status` 也能看到。
 4. **`/usr/share` 不在 sysupgrade 备份里**，重启/升级后覆盖文件由 init 脚本自动重建（规则在 `/etc/config/menu-move`，会保留）。
 5. 只能把标签挂到**已存在的菜单路径**下，目标不存在会被拒绝（凭空造出的分区没有标题，前端根本不显示）。
-6. 需要 `luci-base`、`rpcd-mod-ucode`、`ucode-mod-fs`、`ucode-mod-uci`（装 LuCI 时通常已有，包依赖里已声明）。
+6. 需要 `luci-base`、`rpcd-mod-file`、`rpcd-mod-ucode`、`ucode-mod-fs`、`ucode-mod-uci`（装 LuCI 时通常已有，包依赖里已声明）。`rpcd-mod-file` 是网页界面调用命令行的通道，`rpcd-mod-ucode` 只有可选的 ubus 对象用得到。
 
 ## 说明
 
 - **包名 / LuCI 侧标识是小驼峰**：`luci-app-menuMove`、菜单路径 `admin/services/menuMove`、视图 `menuMove/overview`、权限组 `luci-app-menuMove`；
   但 **UCI config 名、ubus 对象名、init.d 脚本名、命令行名保持 kebab-case**：`menu-move` / `menu_move`（OpenWrt 系统机制约定）。
 - **LuCI 版本**：JS 框架需 LuCI 23.05+，ImmortalWrt 23.05 / 24.10 / 25.x 均支持。
+- **为什么网页界面不直接用 ubus 插件**：`fs.exec('/usr/bin/menu-move', [...])` 走的是系统自带的 `file` 对象，只要 rpcd 在就能用；而且能把命令的 stderr 原样显示出来。`menu_move` ubus 对象仍然保留，供脚本/其它服务调用（`ubus call menu_move status|apply`）。
+- **CI 每次都会打印包内文件清单**，装完可以对着确认 `menu-move.uc` 落在 `/usr/share/ucode/luci/` 下。
 - 改包名只需改目录名 + `PKG_NAME`；`luci.mk` 用目录名推导 `LUCI_BASENAME`（这里是 `menuMove`），所以翻译包叫 `luci-i18n-menuMove-zh-cn`。
 
 ## 排错
 
+先跑这四条，多半一眼就能定位（网页「状态」区显示的 `⚠` 报错就是第一条的输出）：
+
+```sh
+/usr/bin/menu-move status                    # 命令行能不能跑（报错原文就是根因）
+ls -l /usr/share/ucode/luci/menu-move.uc /usr/share/rpcd/ucode/  # 文件是否就位
+ubus list | grep menu_move                   # 可选的 ubus 对象是否注册
+logread -e menu-move; logread -e rpcd        # 触发器/加载报错
+```
+
 | 现象 | 处理 |
 |------|------|
-| 状态区提示「无法访问 rpcd 插件 `menu_move`」 | rpcd 还没加载到插件：`/etc/init.d/rpcd reload`（等价 `kill -HUP $(pidof rpcd)`），然后 `ubus list \| grep menu_move` 应能看到该对象。插件在 `/usr/share/rpcd/ucode/luci.menu-move`，核心模块在 `/usr/share/ucode/luci/menu-move.uc`；加载失败的原因见 `logread \| grep -i rpcd` |
+| 状态区显示 `⚠ ...` 一行报错 | 那是 `/usr/bin/menu-move` 的原样输出：模块找不到 / 权限不对 / ucode 报语法错，都会写清楚。对照上面的 `ls -l` 看文件在不在 |
+| 报 `Permission denied` | rpcd 的 ACL 没生效：确认 `/usr/share/rpcd/acl.d/luci-app-menuMove.json` 存在，然后 `/etc/init.d/rpcd reload` 再刷新 |
 | 点「保存并应用」后菜单没变化 | 点「立即重新生成」，再硬刷新（Ctrl+Shift+R，浏览器会缓存菜单树）。`menu-move status` 的 `stale` 会提示覆盖文件是否过期 |
 | 被隐藏的标签又出现了 | 看 `/usr/lib/luci-menu-move/.disabled` 是否存在（存在即解除隐藏）；或规则被禁用、总开关关了 |
 | 原位置的标签还在 | 该规则没勾选「隐藏原位置的标签」；或这条菜单由老式 Lua controller 定义（命令行会警告） |
+| 「刷新界面」后布局没变 | 浏览器缓存了菜单树：必须点本插件的「刷新界面」（会 `flushCache()`）或硬刷新，普通 F5 有时不够 |
 
 ## 许可
 

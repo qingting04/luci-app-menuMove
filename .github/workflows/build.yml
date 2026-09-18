@@ -47,15 +47,20 @@ jobs:
           grep -q '^CONFIG_LUCI_LANG_zh_Hans=y' .config || echo 'CONFIG_LUCI_LANG_zh_Hans=y' >> .config
           make defconfig
 
+      - name: Sanity checks
+        run: |
+          python3 "${PACKAGE_DIR}/test/check.py"
+
       - name: Build
         run: |
           cd immortalwrt-sdk-*/
           make package/${PACKAGE_DIR}/compile V=s -j$(nproc)
 
-      - name: Show built packages
+      - name: Show built packages and their contents
         if: always()
         run: |
           find immortalwrt-sdk-*/bin/packages -name '*.apk' -o -name '*.ipk' | sort || true
+          python3 "${PACKAGE_DIR}/test/apk_info.py" "immortalwrt-sdk-*/bin/packages/**/*.apk" || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

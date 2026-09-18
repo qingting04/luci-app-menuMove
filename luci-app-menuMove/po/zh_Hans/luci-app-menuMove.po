@@ -12,126 +12,108 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-msgid " (original hidden)"
-msgstr "（原位置已隐藏）"
-
-msgid "-- please choose --"
-msgstr "-- 请选择 --"
+msgid "The command failed with exit code %s."
+msgstr "命令执行失败（退出码 %s）。"
 
 msgid "Configuration"
 msgstr "配置"
 
-msgid "Enable menu moving"
-msgstr "启用菜单标签移动"
+msgid "enabled"
+msgstr "已启用"
 
-msgid "Enabled"
-msgstr "启用"
-
-msgid "Failed to regenerate the menu: %s"
-msgstr "重新生成菜单失败：%s"
-
-msgid "General"
-msgstr "常规"
-
-msgid "Generated file"
-msgstr "生成的文件"
-
-msgid "Hide the original tab"
-msgstr "隐藏原位置的标签"
-
-msgid "Menu Tabs"
-msgstr "菜单标签"
-
-msgid "Menu layout"
-msgstr "菜单布局"
-
-msgid "Menu layout applied - reloading the interface."
-msgstr "菜单布局已应用 — 正在重新加载界面。"
-
-msgid "Move menu entries (tabs) of the LuCI web interface to another section, for example move the tabs below \"NAS\" into \"Services\". The original entry is hidden, the same page is registered below the target section instead."
-msgstr "把 LuCI 网页界面里的菜单条目（标签页）移动到其它分区，例如把“NAS”下面的标签移到“Services”下面。原位置的条目会被隐藏，同一个页面会在目标分区下重新注册。"
-
-msgid "Move rules"
-msgstr "移动规则"
-
-msgid "New title"
-msgstr "新名称"
-
-msgid "Note: the marker file %s exists, so hidden entries are visible again."
-msgstr "注意：标记文件 %s 存在，被隐藏的条目会重新显示。"
-
-msgid "Nothing to do - the menu is left untouched."
-msgstr "无需操作 — 菜单保持不变。"
-
-msgid "Order"
-msgstr "排序"
-
-msgid "Override file written: %s"
-msgstr "已写入覆盖文件：%s"
-
-msgid "Path"
-msgstr "路径"
-
-msgid "Pick the tab to move and the section it should live in. \"order\" is the sort weight inside the target section (lower comes first, empty keeps the original value) and \"new title\" renames the tab; to only reorder a tab, set the target to its own section. Rules whose source entry no longer exists (app uninstalled) are skipped and reported."
-msgstr "选择要移动的标签，以及它应该待在哪个分区。「排序」是它在目标分区里的权重（越小越靠前，留空保持原值），「新名称」用于重命名该标签；只想调整顺序时，把目标分区填成它自己所在的分区即可。源条目不存在的规则（例如插件已卸载）会被跳过并在下面报告。"
-
-msgid "Regenerate menu now"
-msgstr "立即重新生成"
-
-msgid "Reload interface"
-msgstr "刷新界面"
+msgid "disabled"
+msgstr "已禁用"
 
 msgid "Rules"
 msgstr "规则数"
 
-msgid "Show the current menu entries (%d)"
-msgstr "查看当前菜单条目（共 %d 项）"
+msgid "Generated file"
+msgstr "生成的文件"
 
-msgid "Status"
-msgstr "状态"
+msgid "present"
+msgstr "存在"
 
-msgid "Tab to move"
-msgstr "要移动的标签"
-
-msgid "Target section"
-msgstr "目标分区"
+msgid "missing"
+msgstr "缺失"
 
 msgid "The generated file is outdated - regenerate it."
 msgstr "生成的文件已过期 — 请重新生成。"
 
-msgid "The interface will reload now."
-msgstr "界面即将重新加载。"
+msgid "Note: the marker file %s exists, so hidden entries are visible again."
+msgstr "注意：标记文件 %s 存在，被隐藏的条目会重新显示。"
 
-msgid "The override file was removed (menu move disabled or no rules)."
-msgstr "已删除覆盖文件（菜单移动被禁用，或没有任何规则）。"
+msgid "Menu override regenerated: %d rule(s) applied."
+msgstr "菜单已重新生成：应用了 %d 条规则。"
 
-msgid "The rpcd plugin \"menu_move\" is not reachable - the menu cannot be regenerated from here. Run \"/etc/init.d/rpcd reload\" on the router (or reinstall the package) and reload this page."
-msgstr "无法访问 rpcd 插件「menu_move」—— 无法在这里重新生成菜单。请在路由器上执行「/etc/init.d/rpcd reload」（或重新安装本插件）后刷新本页。"
+msgid " (original hidden)"
+msgstr "（原位置已隐藏）"
+
+msgid "Menu layout"
+msgstr "菜单布局"
+
+msgid "Reload interface"
+msgstr "刷新界面"
+
+msgid "Failed to regenerate the menu: %s"
+msgstr "重新生成菜单失败：%s"
+
+msgid "Menu layout applied - reloading the interface."
+msgstr "菜单布局已应用 — 正在重新加载界面。"
+
+msgid "Menu Tabs"
+msgstr "菜单标签"
+
+msgid "General"
+msgstr "常规"
+
+msgid "Enable menu moving"
+msgstr "启用菜单标签移动"
+
+msgid "Move rules"
+msgstr "移动规则"
+
+msgid "Tab to move"
+msgstr "要移动的标签"
+
+msgid "-- please choose --"
+msgstr "-- 请选择 --"
+
+msgid "not found"
+msgstr "未找到"
+
+msgid "Target section"
+msgstr "目标分区"
+
+msgid "Order"
+msgstr "排序"
+
+msgid "New title"
+msgstr "新名称"
+
+msgid "keep original"
+msgstr "保持原名"
+
+msgid "Hide the original tab"
+msgstr "隐藏原位置的标签"
+
+msgid "Enabled"
+msgstr "启用"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Regenerate menu now"
+msgstr "立即重新生成"
+
+msgid "Show the current menu entries (%d)"
+msgstr "查看当前菜单条目（共 %d 项）"
+
+msgid "Path"
+msgstr "路径"
 
 msgid "Title"
 msgstr "标题"
 
 msgid "Type"
 msgstr "类型"
-
-msgid "When disabled the override file is removed and the original menu layout is restored."
-msgstr "禁用时会删除覆盖文件，恢复原始菜单布局。"
-
-msgid "disabled"
-msgstr "已禁用"
-
-msgid "enabled"
-msgstr "已启用"
-
-msgid "keep original"
-msgstr "保持原名"
-
-msgid "missing"
-msgstr "缺失"
-
-msgid "not found"
-msgstr "未找到"
-
-msgid "present"
-msgstr "存在"
 

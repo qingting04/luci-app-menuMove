@@ -107,10 +107,18 @@ case 'paths':
 	exit(0);
 
 case 'json':
+	let jst = mm.status();
+	let jscan = mm.read_specs();
+	let jrules = mm.read_rules();
+
+	/* the LuCI view parses this output - keep the keys in sync with
+	 * htdocs/luci-static/resources/view/menuMove/overview.js */
 	print(sprintf('%.J\n', {
-		status: mm.status(),
-		specs: keys(mm.read_specs().specs),
-		plan: mm.build_plan(mm.read_specs().specs, mm.read_rules().rules, mm.MARKER)
+		status: jst,
+		specs: keys(jscan.specs),
+		plan: mm.build_plan(jscan.specs, jrules.rules, mm.MARKER),
+		warnings: (jrules.enabled && length(jrules.rules))
+			? mm.lua_conflicts({}, filter(jrules.rules, r => r.hide_original)) : []
 	}));
 
 	exit(0);

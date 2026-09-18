@@ -1,22 +1,65 @@
 'use strict';
 'require view';
 'require form';
+'require fs';
 'require uci';
 'require ui';
-'require rpc';
 
 /*
  * LuCI view for luci-app-menuMove.
  *
- * The backend (rpcd ubus object "menu_move") regenerates
- * /usr/share/luci/menu.d/zz-luci-app-menuMove.json from the rules stored in
- * /etc/config/menu-move.  The browser caches the menu tree in its session
- * storage, so the view flushes that cache and reloads the page after
- * applying changes.
+ * Backend access goes through the /usr/bin/menu-move CLI, invoked with the
+ * stock "file" rpcd object (fs.exec).  Two reasons for that:
+ *
+ *   - it does not depend on the optional "menu_move" ubus object, so the page
+ *     keeps working when that plugin is unavailable;
+ *   - whatever the CLI prints on stderr - e.g. an ucode error while loading
+ *     /usr/share/ucode/luci/menu-move.uc - is shown verbatim instead of being
+ *     swallowed, which makes deployment problems visible.
+ *
+ * The override file is regenerated right after "Save & apply" and by the
+ * "Regenerate menu now" button; the browser menu cache is flushed afterwards.
  */
 
-var callStatus = rpc.declare({ object: 'menu_move', method: 'status', expect: {} });
-var callApply = rpc.declare({ object: 'menu_move', method: 'apply', expect: {} });
+var CLI = '/usr/bin/menu-move';
+
+/* Run the CLI; never rejects - ACL denials are reported like error output. */
+function cli_run(args) {
+	return fs.exec(CLI, args).catch(function(err) {
+		return { code: -1, stdout: '', stderr: (err && err.message) ? err.message : String(err) };
+	});
+}
+
+function cli_error(res) {
+	var out = ((res.stderr || '')).trim();
+
+	if (out.length)
+		return out;
+
+	return ((res.stdout || '')).trim() || _('The command failed with exit code %s.').format(res.code);
+}
+
+/* menu-move json -> { status: {...}, specs: [...], plan: {...} } */
+function cli_state() {
+	return cli_run([ 'json' ]).then(function(res) {
+		var data = null;
+
+		if (res.code == 0) {
+			try {
+				data = JSON.parse(res.stdout);
+			}
+			catch (e) {
+				data = null;
+			}
+		}
+
+		if (data === null || typeof(data) != 'object' ||
+		    data.status === null || typeof(data.status) != 'object')
+			throw new Error(cli_error(res));
+
+		return data;
+	});
+}
 
 /* Collect every visible menu entry as a flat list of { path, title, order, type }. */
 function collect_entries(tree) {
@@ -43,54 +86,64 @@ function collect_entries(tree) {
 	return out;
 }
 
+/* Short, flat status lines - no long explanations. */
+function status_lines(data) {
+	var st = data.status, plan = data.plan || {}, lines = [];
+
+	lines.push('%s: %s'.format(_('Configuration'), st.enabled ? _('enabled') : _('disabled')));
+	lines.push('%s: %d'.format(_('Rules'), st.rules));
+	lines.push('%s: %s (%s)'.format(_('Generated file'), st.generated,
+		st.exists ? _('present') : _('missing')));
+
+	if (st.stale)
+		lines.push(_('The generated file is outdated - regenerate it.'));
+
+	if (st.marker_present)
+		lines.push(_('Note: the marker file %s exists, so hidden entries are visible again.').format(st.marker));
+
+	(plan.errors || []).forEach(function(e) {
+		lines.push('⚠ %s'.format(e.error));
+	});
+
+	return lines;
+}
+
 return view.extend({
 	load: function() {
 		return Promise.all([
 			uci.load('menu-move'),
 			ui.menu.load(),
-			callStatus().catch(function() { return null; })
+			cli_state().catch(function(err) { return err; })
 		]);
 	},
 
-	/* Rebuild the override file from the current UCI state and reload the UI. */
-	handleApplyNow: function(node) {
-		var self = this, btn = node.target;
+	/* Rebuild the override file and reload the interface. */
+	handleRegenerate: function(ev) {
+		var btn = ev.currentTarget, done = function() { btn.disabled = false; };
 
 		btn.disabled = true;
 
-		return callApply().then(function(res) {
+		return cli_run([ 'apply' ]).then(function(res) {
+			if (res.code != 0 || ((res.stderr || '')).trim().length)
+				throw new Error(cli_error(res));
+
+			return cli_state();
+		}).then(function(data) {
+			var applied = (data.plan || {}).applied || [];
+			var msg = [ _('Menu override regenerated: %d rule(s) applied.').format(applied.length) ];
+
+			applied.forEach(function(m) {
+				msg.push('• %s → %s%s'.format(m.from, m.path, m.hidden ? _(' (original hidden)') : ''));
+			});
+
+			(data.warnings || []).forEach(function(w) { msg.push('⚠ %s'.format(w)); });
+			(data.plan.errors || []).forEach(function(e) { msg.push('⚠ %s'.format(e.error)); });
+
 			ui.menu.flushCache();
-			ui.hideModal();
-
-			var lines = [], errs = (res.errors || []);
-
-			if (res.removed)
-				lines.push(_('The override file was removed (menu move disabled or no rules).'));
-			else if (res.written)
-				lines.push(_('Override file written: %s').format(res.generated));
-			else
-				lines.push(_('Nothing to do - the menu is left untouched.'));
-
-			(res.applied || []).forEach(function(m) {
-				lines.push('• %s → %s%s'.format(m.from, m.path,
-					m.hidden ? _(' (original hidden)') : ''));
-			});
-
-			errs.forEach(function(e) {
-				lines.push('⚠ %s'.format(e.error));
-			});
-
-			(res.warnings || []).forEach(function(w) {
-				lines.push('⚠ %s'.format(w));
-			});
-
-			var content = E('div', {}, [
-				E('p', {}, lines.map(function(l) { return E('div', {}, l); })),
-				E('p', {}, _('The interface will reload now.'))
-			]);
+			done();
 
 			ui.showModal(_('Menu layout'), [
-				content,
+				E('div', {}, msg.map(function(l) { return E('div', {}, l); })),
 				E('p', { 'class': 'right' }, [
 					E('button', {
 						'class': 'btn cbi-button cbi-button-apply',
@@ -101,57 +154,45 @@ return view.extend({
 					}, [ _('Reload interface') ])
 				])
 			]);
-
-			btn.disabled = false;
 		}).catch(function(err) {
-			btn.disabled = false;
-			ui.addNotification(null, E('p', {}, _('Failed to regenerate the menu: %s').format(err)), 'error');
+			done();
+			ui.addNotification(null, E('p', {}, _('Failed to regenerate the menu: %s').format(err.message || err)), 'error');
 		});
 	},
 
 	handleSaveApply: function(ev, mode) {
-		var self = this;
-
 		return this.handleSave(ev)
 			.then(function() { return uci.apply(); })
-			.then(function() { return callApply(); })
+			.then(function() { return cli_run([ 'apply' ]); })
 			.then(function(res) {
 				ui.menu.flushCache();
-				ui.hideModal();
 
-				if ((res.errors || []).length || (res.warnings || []).length) {
-					var msg = [];
+				var err = (res.code == 0) ? ((res.stderr || '')).trim() : cli_error(res);
 
-					(res.errors || []).forEach(function(e) { msg.push('⚠ %s'.format(e.error)); });
-					(res.warnings || []).forEach(function(w) { msg.push('⚠ %s'.format(w)); });
+				if (err.length)
+					return ui.addNotification(_('Menu layout'),
+						E('p', {}, _('Failed to regenerate the menu: %s').format(err)), 'error');
 
-					ui.addNotification(_('Menu layout'), E('div', {}, msg.map(function(m) {
-						return E('div', {}, m);
-					})), 'warning');
-				}
-				else {
-					ui.addNotification(_('Menu layout'),
-						E('p', {}, _('Menu layout applied - reloading the interface.')), 'info');
-				}
+				ui.addNotification(_('Menu layout'),
+					E('p', {}, _('Menu layout applied - reloading the interface.')), 'info');
 
 				window.setTimeout(function() { window.location.reload(); }, 1500);
 			})
 			.catch(function(err) {
-				ui.addNotification(null, E('p', {}, _('Failed to regenerate the menu: %s').format(err)), 'error');
+				ui.addNotification(null, E('p', {}, _('Failed to regenerate the menu: %s').format(err.message || err)), 'error');
 			});
 	},
 
 	render: function(data) {
 		var self = this;
 		var tree = data[1] || {};
-		var status = data[2];
+		var state = data[2];
 		var entries = collect_entries(tree);
 		var known = {};
 
 		entries.forEach(function(e) { known[e.path] = true; });
 
-		var m = new form.Map('menu-move', _('Menu Tabs'),
-			_('Move menu entries (tabs) of the LuCI web interface to another section, for example move the tabs below "NAS" into "Services". The original entry is hidden, the same page is registered below the target section instead.'));
+		var m = new form.Map('menu-move', _('Menu Tabs'));
 
 		var general = m.section(form.NamedSection, 'settings', 'settings', _('General'));
 		general.anonymous = true;
@@ -160,13 +201,11 @@ return view.extend({
 		var o = general.option(form.Flag, 'enabled', _('Enable menu moving'));
 		o.default = '1';
 		o.rmempty = false;
-		o.description = _('When disabled the override file is removed and the original menu layout is restored.');
 
 		var s = m.section(form.GridSection, 'move', _('Move rules'));
 		s.anonymous = true;
 		s.addremove = true;
 		s.sortable = true;
-		s.description = _('Pick the tab to move and the section it should live in. "order" is the sort weight inside the target section (lower comes first, empty keeps the original value) and "new title" renames the tab; to only reorder a tab, set the target to its own section. Rules whose source entry no longer exists (app uninstalled) are skipped and reported.');
 
 		var o1 = s.option(form.ListValue, 'from', _('Tab to move'));
 		o1.rmempty = false;
@@ -211,23 +250,9 @@ return view.extend({
 			var blocks = [];
 
 			/* --- status / actions ------------------------------------- */
-			var statusLines = [];
-
-			if (!status)
-				statusLines.push(_('The rpcd plugin "menu_move" is not reachable - the menu cannot be regenerated from here. Run "/etc/init.d/rpcd reload" on the router (or reinstall the package) and reload this page.'));
-			else {
-				statusLines.push('%s: %s'.format(_('Configuration'),
-					status.enabled ? _('enabled') : _('disabled')));
-				statusLines.push('%s: %s'.format(_('Rules'), status.rules));
-				statusLines.push('%s: %s (%s)'.format(_('Generated file'), status.generated,
-					status.exists ? _('present') : _('missing')));
-
-				if (status.stale)
-					statusLines.push(_('The generated file is outdated - regenerate it.'));
-
-				if (status.marker_present)
-					statusLines.push(_('Note: the marker file %s exists, so hidden entries are visible again.').format(status.marker));
-			}
+			var statusLines = (state instanceof Error)
+				? [ '⚠ %s'.format(state.message) ]
+				: status_lines(state);
 
 			blocks.push(E('div', { 'class': 'cbi-section' }, [
 				E('h3', {}, _('Status')),
@@ -237,7 +262,7 @@ return view.extend({
 				E('div', { 'class': 'cbi-page-actions' }, [
 					E('button', {
 						'class': 'btn cbi-button cbi-button-apply',
-						'click': ui.createHandlerFn(self, 'handleApplyNow')
+						'click': ui.createHandlerFn(self, 'handleRegenerate')
 					}, [ _('Regenerate menu now') ]),
 					' ',
 					E('button', {

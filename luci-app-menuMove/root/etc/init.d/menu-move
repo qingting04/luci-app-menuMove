@@ -11,7 +11,15 @@ STOP=10
 USE_PROCD=1
 
 apply_rules() {
-	/usr/bin/menu-move apply >/dev/null 2>&1
+	local out
+
+	# Never swallow errors: a broken ucode module or a read-only /usr/share
+	# must be visible, otherwise the menu is silently left untouched.  The
+	# first place to look is "logread -e menu-move".
+	if ! out=$(/usr/bin/menu-move apply 2>&1); then
+		logger -t menu-move "apply failed: ${out:-unknown error}"
+	fi
+
 	return 0
 }
 

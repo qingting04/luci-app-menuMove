@@ -79,5 +79,23 @@ fi
 "$UCODE" -L "$WORK/mods" -e "import * as mm from 'luci.menu-move'; print('ok    luci.menu-move 按安装布局解析成功（GEN_NAME=' + mm.GEN_NAME + '）\n');"
 
 echo
+echo "== page <-> CLI 契约（网页解析 menu-move json 的输出）=="
+"$UCODE" -L "$WORK/mods" "$PKG/root/usr/bin/menu-move" json > "$WORK/state.json"
+python3 - "$WORK/state.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+for key in ('status', 'specs', 'plan', 'warnings'):
+    assert key in d, 'missing top level key %r' % key
+for key in ('enabled', 'rules', 'generated', 'exists', 'stale', 'marker', 'marker_present'):
+    assert key in d['status'], 'missing status key %r' % key
+for key in ('applied', 'errors'):
+    assert key in d['plan'], 'missing plan key %r' % key
+for entry in d['plan']['applied']:
+    for key in ('from', 'path', 'hidden'):
+        assert key in entry, 'missing applied key %r' % key
+print('ok    menu-move json 含网页需要的全部字段（%d 条计划）' % len(d['plan']['applied']))
+PY
+
+echo
 echo "== menu simulation (dispatcher + client menu algorithm) =="
 python3 "$HERE/simulate_menu.py"
