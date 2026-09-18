@@ -1,9 +1,31 @@
-# luci-app-menuMove（菜单标签移动）
+# luci-app-menuMove
 
-ImmortalWrt / OpenWrt 的 LuCI 插件：**把网页界面里的菜单条目（标签页）移动到另一个分区**。
+ImmortalWrt / OpenWrt 的 LuCI 插件：**把网页界面的菜单条目（标签页）移动到另一个分区** —— 例如把「NAS」下面的标签挪到「Services」下面。
 
-典型用法就是把「NAS」分区下面的标签（NFS、Aria2、Samba …）挪到「Services（服务）」下面，
-也可以整段移动一个分区、只改排序、或者给标签换个名字。
+可视化配置、带过期检测和命令行工具，支持 GitHub Actions 云端编译（无需本地搭建 OpenWrt 环境）。
+
+## 原理
+
+LuCI 的菜单由每个插件自己的 `/usr/share/luci/menu.d/*.json` 定义，**文件名就是菜单路径**，例如 `admin/nas/nfs`：
+
+```json
+{
+  "admin/nas/nfs": {
+    "title": "NFS",
+    "order": 30,
+    "action": { "type": "view", "path": "nas/nfs" }
+  }
+}
+```
+
+LuCI 每次请求时按文件名顺序合并这些 JSON（`luci-base` 的 `dispatcher.uc` → `build_pagetree()`），同名路径的后一个文件只能覆盖 `title` / `order` / `action` / `depends`，**改不了路径本身**（＝改不了位置）；而且 LuCI 没有「隐藏节点」的开关，只有 `depends` 检查不通过时条目才会被隐藏。
+
+所以本插件的做法是：
+
+1. **克隆**：把原条目（连同整棵子树）复制一份，注册到目标分区下，`action` / `depends` / 标题原样保留，排序和名称可以覆盖；
+2. **隐藏**：给原条目加一个永远不满足的 `depends` 守卫，让原位置不再显示。
+
+两条合成一个覆盖文件 `/usr/share/luci/menu.d/zz-luci-app-menuMove.json`（`zz-` 保证它排在最后、优先级最高）。LuCI 的菜单缓存以文件列表的 inode/mtime 为 key，文件一写就自动失效，**刷新浏览器即生效**。
 
 ```
 移动前                                    移动后
@@ -15,208 +37,194 @@ Nas                                      Services
 └─ Terminal         admin/nas/ttyd        │  └─ Log             admin/services/aria2/log
                                           └─ OpenClash          admin/services/openclash
 Status
-└─ Network Shares   admin/status/samba    （原来的 Nas 分区因为空了，自动不再显示）
+└─ Network Shares   admin/status/samba    （原 Nas 分区空了，自动不再显示）
 ```
 
-## 1. 原理（为什么需要这么绕）
+> 彩蛋：`touch /usr/lib/luci-menu-move/.disabled` 可以临时把所有被隐藏的条目放出来（删掉又隐藏）。
 
-LuCI 的菜单结构由每个插件自己的 `/usr/share/luci/menu.d/*.json` 定义，文件名即菜单路径，例如：
+## 特性
 
-```json
-{
-  "admin/nas/nfs": {
-    "title": "NFS",
-    "order": 30,
-    "action": { "type": "view", "path": "nas/nfs" },
-    "depends": { "acl": [ "luci-app-nfs" ] }
-  }
-}
+- 可视化配置：下拉框直接列出**当前真实存在的菜单路径**，不用背路径、不会写错
+- 支持整段移动（连同子树）、原地调整排序、改显示名、隐藏原位置
+- 状态面板：覆盖文件是否存在 / 是否已过期，一键「立即重新生成」
+- 网页点「保存并应用」自动重新生成并刷新界面；SSH 里 `uci commit` 也会自动重生成（procd config.change 触发器）
+- 权限沿用原条目（克隆时保留 `depends.acl`），移动后的标签谁能看见跟原来一致
+- 命令行：`menu-move status | apply | check | paths | json`
+- 中文界面（`zh_Hans` 翻译包）
+- GitHub Actions 云端编译，本地零环境；本地测试 60+12 项不需要路由器
+
+## 快速开始：fork 编译（推荐，无需本地环境）
+
+### 1. Fork 本仓库
+
+点右上角 **Fork**。
+
+### 2. 改成你自己的路由器架构
+
+插件是 `PKGARCH:=all`（纯脚本包），**任意 target 的 SDK 都能编出通用包**，所以这四行一般不用动；默认值是**小米路由器 3G（MT7621）**：
+
+```yaml
+env:
+  SDK_VERSION: "25.12.2"   # ImmortalWrt 版本
+  TARGET: "ramips"         # 目标平台
+  SUBTARGET: "mt7621"      # 子目标
+  GCC: "14.3.0"            # gcc 版本
 ```
 
-LuCI 在每次请求时按**文件名顺序**读取并合并这些 JSON（`modules/luci-base/ucode/dispatcher.uc`
-的 `build_pagetree()`），同名路径的后一个文件只能覆盖 `title` / `order` / `action` / `depends`
-等属性，**无法改变路径本身**（= 无法改位置）。而且 LuCI 没有“隐藏节点”的属性开关，只有
-`depends` 检查不通过时该条目才会被隐藏（前端 `ui.js` 的 `getChildren()` 会跳过
-`satisfied === false` 的节点）。
+### 3. 触发编译
 
-所以本插件的做法是：
+- 直接 push 到 `main` 分支，自动触发；或
+- 仓库 **Actions** 标签页 → 左侧 `build` → **Run workflow** 手动触发。
 
-1. **克隆**：把原条目（以及它的整棵子树）复制一份，注册到目标分区下
-   （`action`、`depends`、标题等原样保留，排序/名称可选覆盖）；
-2. **隐藏**：给原条目加一个永远不会满足的 `depends` 守卫
-   （`{"fs": [ { "/usr/lib/luci-menu-move/.disabled": "file" } ]}`），使它不再显示。
+约 5~10 分钟完成。
 
-两条合成一个覆盖文件 `/usr/share/luci/menu.d/zz-luci-app-menuMove.json`（`zz-` 保证它排在最后、
-优先级最高）。LuCI 的菜单缓存以文件列表的 inode/mtime 做 key，所以文件一写就自动失效，**刷新浏览器即可生效**。
+### 4. 下载产物
 
-> 小彩蛋：想临时把所有被隐藏的条目放出来，`touch /usr/lib/luci-menu-move/.disabled` 即可（删掉又隐藏）。
-
-## 2. 文件结构
+Actions → 最近一次运行 → **Summary** → 下载 `luci-app-menuMove` artifact，解压得到：
 
 ```
-luci-app-menuMove/
-├── Makefile                                   # luci.mk 包定义（opkg / apk 都能编）
-├── ucode/menu-move.uc                         # 核心逻辑（路径扫描 / 合并 / 生成 JSON）
-├── htdocs/luci-static/resources/view/menuMove/overview.js   # LuCI 网页界面
-├── po/{templates,zh_Hans}/                    # 中英文翻译
-├── root/
-│   ├── etc/config/menu-move                   # UCI 配置（规则）
-│   ├── etc/init.d/menu-move                   # procd 触发器：配置一改就重新生成
-│   ├── etc/uci-defaults/90-luci-app-menuMove  # 安装后立即生成一次
-│   ├── usr/bin/menu-move                      # 命令行工具（SSH 用）
-│   ├── usr/share/rpcd/ucode/menu-move         # ubus 对象 menu_move（Web 界面调用）
-│   ├── usr/share/luci/menu.d/luci-app-menuMove.json  # 本插件自己的菜单入口
-│   └── usr/share/rpcd/acl.d/luci-app-menuMove.json   # 权限声明
-└── test/                                      # 本地测试（不需要路由器）
-    ├── run.sh  test.uc                        # 单元测试 + CLI 冒烟测试
-    ├── simulate_menu.py                       # 复刻 LuCI 服务端+前端菜单算法做仿真验证
-    └── fixtures/                              # 假的 menu.d / UCI / lua 控制器
+luci-app-menuMove_1.0.0-1_all.apk           # 主包
+luci-i18n-menuMove-zh-cn_*.apk              # 中文翻译包（workflow 里已打开 LUCI_LANG_zh_Hans）
 ```
 
-## 3. 安装
-
-### 3.1 用 SDK / 源码编译（推荐）
-
-把整个 `luci-app-menuMove/` 目录放进：
-
-- 源码树：`<openwrt>/package/luci-app-menuMove/`（或自定义 feed 的 `applications/` 下）
-- SDK：`<sdk>/package/luci-app-menuMove/`
+### 5. 装到路由器
 
 ```sh
+scp luci-app-menuMove_*.apk luci-i18n-menuMove-zh-cn_*.apk root@192.168.1.1:/tmp/
+ssh root@192.168.1.1
+apk add --allow-untrusted /tmp/luci-app-menuMove_*.apk
+apk add --allow-untrusted /tmp/luci-i18n-menuMove-zh-cn_*.apk
+```
+
+> `--allow-untrusted` 是因为本地/CI 编译的包没有官方签名。
+> ImmortalWrt 24.10 及更早（opkg）用 `opkg install /tmp/luci-app-menuMove_*.ipk`。
+
+装完不需要重启，直接刷新 LuCI，在 **系统 → 菜单标签** 里配置。
+
+## 本地编译（有 OpenWrt / ImmortalWrt 源码树时）
+
+```sh
+cp -r luci-app-menuMove immortalwrt/package/
+cd immortalwrt
+
+./scripts/feeds update -a && ./scripts/feeds install -a   # 首次，拉 feeds 源码
+
+make menuconfig   # 选架构 + 勾选 LuCI → Applications → luci-app-menuMove
 make package/luci-app-menuMove/compile V=s
 ```
 
-生成的 ipk/apk 在 `bin/packages/*/luci/` 下，拷到路由器后：
+产物在 `bin/packages/<架构>/luci/` 下。
 
-```sh
-opkg install luci-app-menuMove_*.ipk     # 24.10 及更早
-apk add --allow-untrusted luci-app-menuMove*.apk   # 25.xx（apk）上
-```
+## 使用
 
-### 3.2 不编译，直接手动装（临时试验）
+打开 LuCI（`http://192.168.1.1`）→ **系统 → 菜单标签**：
 
-```sh
-# 在路由器上执行（把目录按 root/ 的结构铺开）
-scp -r root/* root@192.168.1.1:/
-scp ucode/menu-move.uc root@192.168.1.1:/usr/share/ucode/
-scp -r htdocs/* root@192.168.1.1:/www/          # htdocs/luci-static/... → /www/luci-static/...
-ssh root@192.168.1.1 'chmod +x /usr/bin/menu-move /etc/init.d/menu-move; \
-  /etc/init.d/menu-move enable; /etc/init.d/rpcd reload; /usr/bin/menu-move apply'
-```
+- **常规**：总开关（关掉就恢复原始菜单）
+- **移动规则**：每条规则 = 要移动的标签（原路径）+ 目标分区 + 排序 + 新名称（可选）+ 隐藏原位置
+- **状态**：「立即重新生成」/「刷新界面」按钮，以及覆盖文件是否存在、是否过期
+- 展开可以看**当前所有菜单条目**（路径 / 标题 / 类型），写规则时对照着看
 
-依赖（一般已随 LuCI 安装）：`luci-base`、`rpcd-mod-ucode`、`ucode-mod-fs`、`ucode-mod-uci`。
+保存 / 保存并应用后会自动重新生成菜单并刷新页面。
 
-## 4. 使用
+### 可配置项
 
-### 4.1 网页界面
+网页界面的每行规则对应 `/etc/config/menu-move` 里的一个 `config move` 段：
 
-`系统 (System) → 菜单标签 (Menu Tabs)`：
+| 字段 | 默认值 | 说明 |
+|---|---|---|
+| `from` | —— | 要移动的菜单路径，如 `admin/nas/nfs` |
+| `to` | —— | 目标分区路径，如 `admin/services`；填原路径的父级 = 原地调整排序 |
+| `order` | 保持原值 | 在目标分区内的排序权重，越小越靠前 |
+| `title` | 空（保持原名） | 用另一个名字显示该标签 |
+| `hide_original` | `1` | 是否隐藏原位置 |
+| `enabled` | `1` | 单条规则开关 |
+| `settings.enabled` | `1` | 总开关，关闭时删除覆盖文件、恢复原菜单 |
 
-- **常规**：总开关。
-- **移动规则**：每条规则 = 要移动的标签（原路径）+ 目标分区 + 排序 + 新名称（可选）+ 隐藏原位置。
-  下拉框列出的是**当前实际存在的**菜单条目，不用记路径。
-- **状态**：显示覆盖文件是否存在、是否已过期，以及两个按钮：
-  「立即重新生成」和「刷新界面」。
-- 底部 `保存` / `保存并应用`：保存后会自动提交 UCI 并重新生成菜单，然后刷新页面。
-
-### 4.2 命令行
-
-```sh
-menu-move status     # 显示配置状态、文件是否存在、是否过期
-menu-move apply      # 重新生成覆盖文件
-menu-move check      # 试运行，只报告会做什么/有哪些错误
-menu-move paths      # 列出当前所有菜单路径（用来写规则）
-menu-move json       # 输出完整状态 + 计划（JSON，便于脚本处理）
-```
-
-### 4.3 UCI（脚本化配置）
+把「Nas 下的 NFS」移到「Services」，命令行等价：
 
 ```sh
 uci add menu-move move
 uci set menu-move.@move[-1].from='admin/nas/nfs'
 uci set menu-move.@move[-1].to='admin/services'
 uci set menu-move.@move[-1].order='45'
-uci set menu-move.@move[-1].hide_original='1'
 uci commit menu-move
-/usr/bin/menu-move apply        # commit 之后 procd 触发器通常已经自动跑过一次
+/etc/init.d/menu-move reload        # commit 时 procd 触发器通常已经跑过，这条是保险
 ```
 
-规则字段：
+### 命令行
 
-| 字段 | 说明 |
-| --- | --- |
-| `from` | 原菜单路径，如 `admin/nas/nfs` |
-| `to` | 目标分区路径，如 `admin/services`；填原路径的父级 = 原地调整排序 |
-| `order` | 在目标分区内的排序权重，越小越靠前；留空 = 保持原值 |
-| `title` | 可选，覆盖显示名称（留空 = 原名） |
-| `hide_original` | 是否隐藏原位置（默认 `1`） |
-| `enabled` | 单条规则开关 |
+| 命令 | 说明 |
+|---|---|
+| `menu-move status` | 配置状态、覆盖文件是否存在、是否过期 |
+| `menu-move apply` | 立即重新生成覆盖文件 |
+| `menu-move check` | 试运行：只报告会做什么、有哪些错误，不写文件 |
+| `menu-move paths` | 列出当前所有菜单路径（写规则时用） |
+| `menu-move json` | 输出完整状态 + 计划（JSON，便于脚本处理） |
 
-## 5. 注意事项与已知限制
+## 目录结构
 
-1. **原地址会失效**：被隐藏的条目不再是合法路由，直接访问旧 URL
-   （如 `/cgi-bin/luci/admin/nas/nfs`）会落到同分区的其它页面。书签请用新地址。
-2. **Lua controller 定义的应用**（老式 `luci.controller.*`，如某些 OpenClash 版本）：
-   Lua controller 在 JSON 之后加载，会覆盖本插件的 JSON，隐藏可能无效。
-   插件会检测并在界面/命令行给出警告。
-3. **权限沿用原条目**：克隆出来的条目的 `depends.acl` 与原条目一致，所以只有原本能看到该页面的用户
-   才能看到移动后的标签。
-4. **不会自动跟随插件升级**：新装插件后菜单变化了，点一下「立即重新生成」，
-   或看「状态」里的过期提示（`menu-move status` 也会显示）。
-5. **sysupgrade**：`/usr/share` 不在备份里，覆盖文件重启后由 init 脚本自动重建（规则在 `/etc/config`，会保留）。
-6. 只能把标签加到**已存在的菜单路径**下面；不存在的目标会在界面上被拒绝（因为凭空造出的分区没有标题，
-   前端根本不会显示）。
+```
+.
+├── luci-app-menuMove/                       # LuCI 插件包
+│   ├── Makefile                             #   luci.mk 包定义（opkg / apk 都能编）
+│   ├── ucode/menu-move.uc                   #   核心逻辑（扫描合并 menu.d → 克隆 + 隐藏 → 生成 JSON）
+│   ├── htdocs/luci-static/resources/view/menuMove/overview.js   # 网页界面
+│   ├── po/{templates,zh_Hans}/              #   中英文翻译
+│   ├── root/
+│   │   ├── etc/config/menu-move             #   UCI 配置（规则）
+│   │   ├── etc/init.d/menu-move             #   procd 触发器：配置一改就重新生成
+│   │   ├── etc/uci-defaults/90-luci-app-menuMove   # 安装后立即生成一次
+│   │   ├── usr/bin/menu-move                #   命令行工具
+│   │   ├── usr/share/rpcd/ucode/menu-move   #   ubus 对象 menu_move（网页界面调用）
+│   │   ├── usr/share/luci/menu.d/luci-app-menuMove.json   # 本插件自己的菜单入口
+│   │   └── usr/share/rpcd/acl.d/luci-app-menuMove.json    # 权限声明
+│   └── test/                                # 本地测试（不需要路由器）
+│       ├── run.sh  test.uc                  #   60 项单元检查 + CLI/插件冒烟
+│       ├── simulate_menu.py                 #   复刻 LuCI 服务端+前端菜单算法做仿真验证（12 项）
+│       └── fixtures/                        #   假的 menu.d / UCI / Lua controller
+└── .github/workflows/build.yml              # GitHub Actions 云端编译
+```
 
-## 6. 测试
+## 本地测试（可选，不需要路由器）
 
-不需要路由器，装一个 `ucode` 即可（本地或 host 编译产物都行）：
+装一个 `ucode` 就能跑（宿主机或 host 编译产物都行）：
 
 ```sh
+cd luci-app-menuMove
 UCODE=/path/to/ucode ./test/run.sh
 ```
 
-会做三件事：
+三部分：`test.uc` 的 60 项单元检查（合并语义、克隆、子树、原地排序、非法规则、幂等、开关、Lua 检测）→ CLI/插件冒烟测试 → `simulate_menu.py` 按 `dispatcher.uc` 与前端 `ui.js` 的算法复刻仿真，验证移动后的菜单真的长成期望的样子。
 
-1. `test/test.uc`：60 项单元检查（合并语义、克隆、子树、原地排序、错误路径、幂等、UCI 开关、Lua 检测）；
-2. CLI 冒烟测试（`status` / `check` / `paths` / `apply`）；
-3. `test/simulate_menu.py`：按 LuCI `dispatcher.uc` 的 `build_pagetree()` 与前端 `ui.js` 的
-   `scrubMenu()`/`getChildren()` 复刻一套仿真，验证**移动后的菜单真的长成期望的样子**
-   （移动的文件、被隐藏的原条目、整棵子树、旧 URL 消失、分区清空后自动隐藏）。
+## 架构映射
 
-## 7. 命名约定（和 jluDrcom 一致）
+fork 后如需修改 workflow 顶部的 4 个变量（纯 LuCI 插件其实不挑 target，默认值可直接用）：
 
-- **包名 / LuCI 侧标识：小驼峰** —— `luci-app-menuMove`、菜单路径 `admin/system/menuMove`、
-  视图 `menuMove/overview`、权限组 `luci-app-menuMove`；
-- **OS 机制名：kebab-case** —— UCI 配置 `/etc/config/menu-move`、命令行 `/usr/bin/menu-move`、
-  ubus 对象 `menu_move`、init 脚本 `/etc/init.d/menu-move`、生成的文件
-  `zz-luci-app-menuMove.json`、隐藏标记 `/usr/lib/luci-menu-move/.disabled`。
+| 路由器 | TARGET / SUBTARGET |
+|---|---|
+| 小米 3G / 4A 千兆 / AC2100 等（MT7621） | `ramips` / `mt7621` |
+| 小米 4A 百兆 / 4C 等（MT7628） | `ramips` / `mt76x8` |
+| x86_64 软路由 | `x86` / `64` |
+| 树莓派 4 | `bcm27xx` / `bcm2711` |
 
-改包名只需改目录名 + `PKG_NAME`；`luci.mk` 会用目录名推导 `LUCI_BASENAME`（这里是 `menuMove`），
-所以翻译包叫 `luci-i18n-menuMove-zh-cn`。
+> 不确定时：在 [ImmortalWrt 固件下载站](https://downloads.immortalwrt.org) 找到你的机型，看它在 `releases/<版本>/targets/<TARGET>/<SUBTARGET>/` 的哪一层。`GCC` 版本看该目录下 `immortalwrt-sdk-*.tar.zst` 文件名里的 `gcc-xx.x.x`。
 
-## 8. 仓库与 CI
+## 注意事项
 
-远程仓库：<git@github.com:qingting04/luci-app-menuMove.git>
+1. **原地址会失效**：被隐藏的条目不再是合法路由，直接访问旧 URL（如 `/cgi-bin/luci/admin/nas/nfs`）会返回 404，书签请用新地址。
+2. **Lua controller 定义的应用**（老式 `luci.controller.*`，如某些 OpenClash 版本）在 JSON 之后加载，会覆盖本插件，隐藏可能无效 —— 插件会检测并在界面/命令行给出警告。
+3. **新装插件后菜单变了**，点一下「立即重新生成」；界面上会显示「已过期」，`menu-move status` 也能看到。
+4. **`/usr/share` 不在 sysupgrade 备份里**，重启/升级后覆盖文件由 init 脚本自动重建（规则在 `/etc/config/menu-move`，会保留）。
+5. 只能把标签挂到**已存在的菜单路径**下，目标不存在会被拒绝（凭空造出的分区没有标题，前端根本不显示）。
+6. 需要 `luci-base`、`rpcd-mod-ucode`、`ucode-mod-fs`、`ucode-mod-uci`（装 LuCI 时通常已有，包依赖里已声明）。
 
-`.github/workflows/build.yml` 沿用 jluDrcom 的流水线：下载 ImmortalWrt SDK
-（25.12.2 / ramips-mt7621 / gcc 14.3.0）→ 把本目录拷进 SDK 的 `package/` → `feeds update/install`
-→ `make package/luci-app-menuMove/compile`，产物上传为 Actions artifact：
+## 说明
 
-```
-luci-app-menuMove*.apk                    （主包）
-luci-i18n-menuMove-zh-cn*.apk             （中文翻译包，工作流里已打开 LUCI_LANG_zh_Hans）
-```
+- **包名 / LuCI 侧标识是小驼峰**：`luci-app-menuMove`、菜单路径 `admin/system/menuMove`、视图 `menuMove/overview`、权限组 `luci-app-menuMove`；
+  但 **UCI config 名、ubus 对象名、init.d 脚本名、命令行名保持 kebab-case**：`menu-move` / `menu_move`（OpenWrt 系统机制约定）。
+- **LuCI 版本**：JS 框架需 LuCI 23.05+，ImmortalWrt 23.05 / 24.10 / 25.x 均支持。
+- 改包名只需改目录名 + `PKG_NAME`；`luci.mk` 用目录名推导 `LUCI_BASENAME`（这里是 `menuMove`），所以翻译包叫 `luci-i18n-menuMove-zh-cn`。
 
-手动触发：仓库 → Actions → build → Run workflow。
-
-## 9. 卸载 / 恢复
-
-```sh
-menu-move status            # 或者直接把总开关关掉，然后保存应用
-uci set menu-move.settings.enabled='0'; uci commit menu-move; /usr/bin/menu-move apply
-rm -f /usr/share/luci/menu.d/zz-luci-app-menuMove.json     # 彻底恢复
-```
-
-## 10. 许可
+## 许可
 
 Apache-2.0（与 LuCI 一致）。

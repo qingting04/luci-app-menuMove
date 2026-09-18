@@ -53,13 +53,13 @@ define Package/$(PKG_NAME)/postrm
 }
 endef
 
-# luci.mk lives in the root of the luci feed (in-tree layout: ../../luci.mk)
-# or in the cloned luci feed (feeds/luci/luci.mk) when this package is built
-# as an out-of-tree package inside package/.
-ifeq ($(wildcard ../../luci.mk),)
-  include $(TOPDIR)/feeds/luci/luci.mk
-else
-  include ../../luci.mk
+# luci.mk lives either in the root of the luci feed (package placed in-tree,
+# i.e. <luci-feed>/applications/luci-app-menuMove) or in the cloned luci feed
+# (feeds/luci/luci.mk) - the usual setup when the package sits in package/.
+LUCI_MK:=$(firstword $(wildcard $(CURDIR)/../../luci.mk) $(wildcard $(TOPDIR)/feeds/luci/luci.mk))
+ifeq ($(LUCI_MK),)
+  $(error luci.mk not found - run "scripts/feeds update -a && scripts/feeds install -a" first)
 endif
+include $(LUCI_MK)
 
 # call BuildPackage - OpenWrt buildroot signature
