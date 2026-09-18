@@ -214,7 +214,7 @@ return view.extend({
 			var statusLines = [];
 
 			if (!status)
-				statusLines.push(_('The rpcd plugin "menu_move" is not reachable - changes cannot be applied from here.'));
+				statusLines.push(_('The rpcd plugin "menu_move" is not reachable - the menu cannot be regenerated from here. Run "/etc/init.d/rpcd reload" on the router (or reinstall the package) and reload this page.'));
 			else {
 				statusLines.push('%s: %s'.format(_('Configuration'),
 					status.enabled ? _('enabled') : _('disabled')));

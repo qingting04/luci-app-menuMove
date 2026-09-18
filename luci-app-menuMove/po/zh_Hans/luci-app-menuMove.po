@@ -105,8 +105,8 @@ msgstr "界面即将重新加载。"
 msgid "The override file was removed (menu move disabled or no rules)."
 msgstr "已删除覆盖文件（菜单移动被禁用，或没有任何规则）。"
 
-msgid "The rpcd plugin \"menu_move\" is not reachable - changes cannot be applied from here."
-msgstr "无法访问 rpcd 插件“menu_move” — 无法在这里应用改动。"
+msgid "The rpcd plugin \"menu_move\" is not reachable - the menu cannot be regenerated from here. Run \"/etc/init.d/rpcd reload\" on the router (or reinstall the package) and reload this page."
+msgstr "无法访问 rpcd 插件「menu_move」—— 无法在这里重新生成菜单。请在路由器上执行「/etc/init.d/rpcd reload」（或重新安装本插件）后刷新本页。"
 
 msgid "Title"
 msgstr "标题"
