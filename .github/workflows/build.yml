@@ -1,0 +1,68 @@
+name: build
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  SDK_VERSION: "25.12.2"
+  TARGET: "ramips"
+  SUBTARGET: "mt7621"
+  GCC: "14.3.0"
+  PACKAGE_DIR: "luci-app-menuMove"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install zstd
+        run: sudo apt-get update && sudo apt-get install -y zstd
+
+      - name: Download ImmortalWrt SDK
+        run: |
+          wget -q -O sdk.tar.zst \
+            "https://downloads.immortalwrt.org/releases/${SDK_VERSION}/targets/${TARGET}/${SUBTARGET}/immortalwrt-sdk-${SDK_VERSION}-${TARGET}-${SUBTARGET}_gcc-${GCC}_musl.Linux-x86_64.tar.zst"
+          tar --zstd -xf sdk.tar.zst
+
+      - name: Copy package into SDK
+        run: |
+          cp -r "${PACKAGE_DIR}" immortalwrt-sdk-*/package/
+
+      - name: Update feeds
+        run: |
+          cd immortalwrt-sdk-*/
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a -f
+          make defconfig
+
+      - name: Enable Simplified Chinese translation
+        run: |
+          cd immortalwrt-sdk-*/
+          sed -i 's/^# CONFIG_LUCI_LANG_zh_Hans is not set/CONFIG_LUCI_LANG_zh_Hans=y/' .config
+          grep -q '^CONFIG_LUCI_LANG_zh_Hans=y' .config || echo 'CONFIG_LUCI_LANG_zh_Hans=y' >> .config
+          make defconfig
+
+      - name: Build
+        run: |
+          cd immortalwrt-sdk-*/
+          make package/${PACKAGE_DIR}/compile V=s -j$(nproc)
+
+      - name: Show built packages
+        if: always()
+        run: |
+          find immortalwrt-sdk-*/bin/packages -name '*.apk' -o -name '*.ipk' | sort || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-menuMove
+          if-no-files-found: warn
+          path: |
+            immortalwrt-sdk-*/bin/packages/**/luci-app-menuMove*.apk
+            immortalwrt-sdk-*/bin/packages/**/luci-i18n-menuMove*.apk
+            immortalwrt-sdk-*/bin/packages/**/luci-app-menuMove*.ipk
+            immortalwrt-sdk-*/bin/packages/**/luci-i18n-menuMove*.ipk

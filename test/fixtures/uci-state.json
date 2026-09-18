@@ -1,0 +1,59 @@
+{
+	"menu-move": {
+		"settings": {
+			".type": "settings",
+			"enabled": "1"
+		},
+		"cfg01": {
+			".type": "move",
+			"enabled": "1",
+			"from": "admin/nas/nfs",
+			"to": "admin/services",
+			"title": "",
+			"order": "45",
+			"hide_original": "1"
+		},
+		"cfg02": {
+			".type": "move",
+			"enabled": "1",
+			"from": "admin/nas/aria2",
+			"to": "admin/services",
+			"title": "",
+			"order": "46",
+			"hide_original": "1"
+		},
+		"cfg03": {
+			".type": "move",
+			"enabled": "1",
+			"from": "admin/services/ttyd",
+			"to": "admin/services",
+			"title": "Terminal (custom)",
+			"order": "5",
+			"hide_original": "1"
+		},
+		"cfg04": {
+			".type": "move",
+			"enabled": "1",
+			"from": "admin/does/notexist",
+			"to": "admin/services",
+			"order": "80",
+			"hide_original": "1"
+		},
+		"cfg05": {
+			".type": "move",
+			"enabled": "1",
+			"from": "admin/nas/samba",
+			"to": "admin/status",
+			"title": "",
+			"order": "70",
+			"hide_original": "1"
+		},
+		"cfg06": {
+			".type": "move",
+			"enabled": "0",
+			"from": "admin/services/openclash",
+			"to": "admin/nas",
+			"hide_original": "1"
+		}
+	}
+}

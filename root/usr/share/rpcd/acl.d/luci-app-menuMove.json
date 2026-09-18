@@ -1,0 +1,17 @@
+{
+	"luci-app-menuMove": {
+		"description": "Grant access to the LuCI menu tab organizer",
+		"read": {
+			"ubus": {
+				"menu_move": [ "status" ]
+			},
+			"uci": [ "menu-move" ]
+		},
+		"write": {
+			"ubus": {
+				"menu_move": [ "apply" ]
+			},
+			"uci": [ "menu-move" ]
+		}
+	}
+}

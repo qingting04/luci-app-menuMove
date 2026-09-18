@@ -1,0 +1,12 @@
+config settings 'settings'
+	option enabled '1'
+
+# Example rule - move the "NFS" tab from the NAS section into Services:
+#
+# config move
+#	option enabled '1'
+#	option from 'admin/nas/nfs'
+#	option to 'admin/services'
+#	option title ''
+#	option order '60'
+#	option hide_original '1'

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Generate the override file right after installation.
+
+/usr/bin/menu-move apply 2>/dev/null
+
+rm -f /tmp/luci-indexcache.*
+exit 0

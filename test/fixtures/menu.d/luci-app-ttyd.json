@@ -1,0 +1,28 @@
+{
+	"admin/services/ttyd": {
+		"title": "Terminal",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "services/ttyd"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-ttyd"
+			]
+		}
+	},
+	"admin/nas/ttyd": {
+		"title": "Terminal",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "nas/ttyd"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-ttyd"
+			]
+		}
+	}
+}

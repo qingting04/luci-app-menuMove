@@ -1,0 +1,29 @@
+'use strict';
+
+/*
+ * rpcd ucode plugin providing the "menu_move" ubus object.
+ *
+ *   ubus call menu_move status
+ *   ubus call menu_move apply
+ *
+ * The heavy lifting lives in /usr/share/ucode/menu-move.uc, which is shared
+ * with the /usr/bin/menu-move CLI tool.
+ */
+
+import * as move from 'menu-move';
+
+return {
+	menu_move: {
+		status: {
+			call: function() {
+				return move.status();
+			}
+		},
+
+		apply: {
+			call: function() {
+				return move.apply();
+			}
+		}
+	}
+};

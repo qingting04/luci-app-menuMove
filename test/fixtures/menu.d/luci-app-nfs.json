@@ -1,0 +1,15 @@
+{
+	"admin/nas/nfs": {
+		"title": "NFS",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "nas/nfs"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-nfs"
+			]
+		}
+	}
+}

@@ -1,0 +1,133 @@
+#!/usr/bin/ucode
+'use strict';
+
+/*
+ * menu-move - re-organize LuCI tabs from the command line.
+ *
+ * Usage:
+ *   menu-move status    show the current configuration state
+ *   menu-move apply     regenerate the menu override file
+ *   menu-move check     dry run, report what would be done
+ *   menu-move paths     list all menu entries found in /usr/share/luci/menu.d
+ *   menu-move json      dump the full state as JSON
+ */
+
+import * as mm from 'menu-move';
+
+const usage = `Usage: menu-move <command>
+
+Commands:
+  status    show configuration and generated file state
+  apply     regenerate ${mm.MENU_DIR}/${mm.GEN_NAME}
+  check     dry run - report errors and planned moves without writing
+  paths     list all available menu entry paths
+  json      dump state + plan as JSON
+`;
+
+const cmd = ARGV[0] ?? 'status';
+
+function human_move(m) {
+	return sprintf('  %s -> %s%s%s', m.from, m.path,
+		m.in_place ? '  [order/title only]' : '',
+		m.hidden ? '  [original hidden]' : '');
+}
+
+function print_errors(list, indent) {
+	for (let e in list)
+		printf('%s%s%s\n', indent ?? '  ',
+			length(e.from) ? sprintf('%s -> %s: ', e.from, e.to) : '', e.error ?? e);
+}
+
+switch (cmd) {
+case 'apply':
+	let res = mm.apply();
+
+	if (res.removed)
+		print(sprintf('menu-move: override file removed (%s)\n', res.generated));
+
+	if (res.written) {
+		print(sprintf('menu-move: %d rule(s) applied, wrote %s\n',
+			length(res.applied), res.generated));
+
+		for (let m in res.applied)
+			print(human_move(m) + '\n');
+	}
+	else if (!res.removed) {
+		print('menu-move: nothing to do (no enabled rules)\n');
+	}
+
+	if (length(res.warnings)) {
+		print('warnings:\n');
+		for (let w in res.warnings)
+			print(sprintf('  %s\n', w));
+	}
+
+	if (length(res.errors)) {
+		print('errors:\n');
+		print_errors(res.errors);
+	}
+
+	exit(length(res.errors) ? 1 : 0);
+
+case 'check':
+	let scan = mm.read_specs();
+	let rl = mm.read_rules();
+	let plan;
+
+	if (!rl.enabled || !length(rl.rules)) {
+		print('menu-move: nothing configured, the menu is left untouched\n');
+		exit(0);
+	}
+
+	plan = mm.build_plan(scan.specs, rl.rules, mm.MARKER);
+
+	print(sprintf('menu-move: %d rule(s), %d will be applied, %d error(s)\n',
+		length(rl.rules), length(plan.applied), length(plan.errors)));
+
+	for (let m in plan.applied)
+		print(human_move(m) + '\n');
+
+	if (length(plan.errors)) {
+		print('errors:\n');
+		print_errors(plan.errors);
+	}
+
+	exit(length(plan.errors) ? 1 : 0);
+
+case 'paths':
+	let s = mm.read_specs();
+
+	for (let path in sort(keys(s.specs))) {
+		let spec = s.specs[path];
+
+		printf('%-40s %-24s %s\n', path, spec.title ?? '',
+			spec.action?.type ?? '-');
+	}
+
+	exit(0);
+
+case 'json':
+	print(sprintf('%.J\n', {
+		status: mm.status(),
+		specs: keys(mm.read_specs().specs),
+		plan: mm.build_plan(mm.read_specs().specs, mm.read_rules().rules, mm.MARKER)
+	}));
+
+	exit(0);
+
+case 'status':
+	let st = mm.status();
+
+	printf('enabled          %s\n', st.enabled ? 'yes' : 'no');
+	printf('rules            %d\n', st.rules);
+	printf('override file    %s (%s)\n', st.generated, st.exists ? 'present' : 'missing');
+	printf('stale            %s\n', st.stale ? 'yes - run "menu-move apply"' : 'no');
+	printf('hide marker      %s (%s)\n', st.marker,
+		st.marker_present ? 'present - entries are NOT hidden' : 'absent');
+
+	exit(0);
+
+default:
+	print(usage);
+	exit(cmd == 'help' || cmd == '--help' || cmd == '-h' ? 0 : 1);
+}

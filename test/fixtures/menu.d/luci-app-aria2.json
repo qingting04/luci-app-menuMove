@@ -1,0 +1,39 @@
+{
+	"admin/nas/aria2": {
+		"title": "Aria2",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "nas/aria2"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-aria2"
+			],
+			"uci": {
+				"aria2": true
+			}
+		}
+	},
+	"admin/nas/aria2/log": {
+		"title": "Log",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "nas/aria2_log"
+		}
+	},
+	"admin/services/openclash": {
+		"title": "OpenClash",
+		"order": 90,
+		"action": {
+			"type": "view",
+			"path": "services/openclash"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-openclash"
+			]
+		}
+	}
+}

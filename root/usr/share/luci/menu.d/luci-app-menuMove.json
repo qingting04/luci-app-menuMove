@@ -1,0 +1,13 @@
+{
+	"admin/system/menuMove": {
+		"title": "Menu Tabs",
+		"order": 95,
+		"action": {
+			"type": "view",
+			"path": "menuMove/overview"
+		},
+		"depends": {
+			"acl": [ "luci-app-menuMove" ]
+		}
+	}
+}

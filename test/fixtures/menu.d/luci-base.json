@@ -1,0 +1,67 @@
+{
+	"admin": {
+		"title": "Administration",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		},
+		"auth": {
+			"methods": [
+				"cookie:sysauth_https",
+				"cookie:sysauth_http"
+			],
+			"login": true
+		}
+	},
+	"admin/status": {
+		"title": "Status",
+		"order": 10,
+		"action": {
+			"type": "firstchild",
+			"preferred": "overview",
+			"recurse": true
+		}
+	},
+	"admin/status/overview": {
+		"title": "Overview",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "status/overview"
+		}
+	},
+	"admin/system": {
+		"title": "System",
+		"order": 20,
+		"action": {
+			"type": "firstchild",
+			"preferred": "system",
+			"recurse": true
+		}
+	},
+	"admin/services": {
+		"title": "Services",
+		"order": 40,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+	"admin/network": {
+		"title": "Network",
+		"order": 50,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	},
+	"admin/nas": {
+		"title": "Nas",
+		"order": 60,
+		"action": {
+			"type": "firstchild",
+			"recurse": true
+		}
+	}
+}
