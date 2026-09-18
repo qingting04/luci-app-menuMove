@@ -32,7 +32,7 @@
  * changes), a browser reload is enough to show the new layout.
  */
 
-import { readfile, glob, stat, unlink, basename, open } from 'fs';
+import { readfile, glob, stat, unlink, basename, open, rename } from 'fs';
 import { cursor } from 'uci';
 
 export const MENU_DIR = '/usr/share/luci/menu.d';
@@ -344,14 +344,47 @@ export function render_overrides(overrides) {
 	return sprintf('%.J\n', sorted);
 }
 
+/*
+ * 原子写：先写同目录的 .tmp 再 rename。LuCI 每次请求都可能并发读这个文件，
+ * 直接覆盖会有「读到半个 JSON」的窗口（.tmp 后缀不会被 LuCI 的 *.json 扫描到）。
+ * 内容一样就直接跳过 —— 免得白白刷新 mtime，让 LuCI 的菜单缓存
+ * （以 menu.d 文件列表的 inode/mtime 为 key）无谓失效。
+ * 返回 true = 真的写了，false = 内容一致或写失败。
+ */
 function write_file(path, content) {
-	let fd = open(path, 'w', 0644);
+	let tmp = path + '.tmp';
+	let fd;
+
+	try {
+		if (readfile(path) == content)
+			return false;
+	}
+	catch (e) {
+		/* 文件不存在或读不到：照常写 */
+	}
+
+	fd = open(tmp, 'w', 0644);
 
 	if (!fd)
 		return false;
 
 	fd.write(content);
 	fd.close();
+
+	/* ucode 的 fs 函数返回 true/null（不是 0/-1），失败也可能抛异常 */
+	let ok = false;
+
+	try {
+		ok = !!rename(tmp, path);
+	}
+	catch (e) {
+		ok = false;
+	}
+
+	if (!ok) {
+		unlink(tmp);
+		return false;
+	}
 
 	return true;
 }
@@ -398,27 +431,28 @@ export function status(o) {
 	let opts = defaults(o);
 	let rl = read_rules(opts);
 	let st = stat(opts.gen_path);
-	let stale = false;
+	let current = null;
+	let expected = null;
 
+	/*
+	 * 过期判定用「内容比对」，而不是「menu.d 的 mtime 比覆盖文件新」：
+	 * mtime 法漏掉的典型场景是刚装了个时间戳比覆盖文件还旧的插件
+	 * （apk 里带的是构建时间），或者某个 menu.d 被删/改却不必比覆盖文件新。
+	 * 直接把「现在应该生成的内容」算出来跟磁盘上的比最准。
+	 * 未启用或没有可用规则时，期望状态是「没有覆盖文件」。
+	 */
 	if (rl.enabled && length(rl.rules)) {
-		if (!st) {
-			stale = true;
-		}
-		else {
-			for (let file in glob(opts.menu_dir + '/*.json')) {
-				let name = basename(file);
+		let plan = build_plan(read_specs(opts).specs, rl.rules, opts.marker);
 
-				if (name == opts.gen_name)
-					continue;
+		if (length(plan.applied))
+			expected = render_overrides(plan.overrides);
+	}
 
-				let s = stat(file);
-
-				if (s && s.mtime > st.mtime) {
-					stale = true;
-					break;
-				}
-			}
-		}
+	try {
+		current = st ? readfile(opts.gen_path) : null;
+	}
+	catch (e) {
+		current = null;
 	}
 
 	return {
@@ -427,7 +461,7 @@ export function status(o) {
 		generated: opts.gen_path,
 		exists: !!st,
 		mtime: st?.mtime ?? null,
-		stale: stale,
+		stale: (current != expected),
 		marker: opts.marker,
 		marker_present: !!stat(opts.marker)
 	};
@@ -441,6 +475,7 @@ export function apply(o) {
 		rules: length(rl.rules),
 		generated: opts.gen_path,
 		written: false,
+		unchanged: false,
 		removed: false,
 		errors: [],
 		applied: [],
@@ -474,10 +509,25 @@ export function apply(o) {
 	}
 
 	res.content = render_overrides(plan.overrides);
-	res.written = write_file(opts.gen_path, res.content);
 
-	if (!res.written)
-		push(res.errors, { error: sprintf('cannot write %s', opts.gen_path) });
+	if (write_file(opts.gen_path, res.content)) {
+		res.written = true;
+	}
+	else {
+		let current = null;
+
+		try {
+			current = readfile(opts.gen_path);
+		}
+		catch (e) {
+			current = null;
+		}
+
+		if (current == res.content)
+			res.unchanged = true; /* 已经是这个内容，不动文件（保住菜单缓存） */
+		else
+			push(res.errors, { error: sprintf('cannot write %s', opts.gen_path) });
+	}
 
 	return res;
 }

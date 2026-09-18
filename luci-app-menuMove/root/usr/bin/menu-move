@@ -52,6 +52,10 @@ case 'apply':
 		for (let m in res.applied)
 			print(human_move(m) + '\n');
 	}
+	else if (res.unchanged) {
+		print(sprintf('menu-move: %s already up to date (%d rule(s)), not rewritten\n',
+			res.generated, length(res.applied)));
+	}
 	else if (!res.removed) {
 		print('menu-move: nothing to do (no enabled rules)\n');
 	}

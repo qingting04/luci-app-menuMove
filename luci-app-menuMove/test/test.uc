@@ -121,10 +121,13 @@ check(!exists(errs.overrides, 'admin/nas/ttyd'), 'rejected collision rule did no
 check(errs.overrides['admin/nas/nfs'].depends.fs == null, 'the in-place rule for admin/nas/nfs did not add a hide guard');
 
 print("\n### 6. apply() end to end\n");
+/* 先删掉覆盖文件，确保这一节真的测到「写入」而不是「内容一致跳过」 */
+unlink(GEN);
 let res = mm.apply(OPTS);
 check(res.enabled == true, 'config is enabled');
 check(res.rules == 5, 'five enabled rules read from uci (one disabled rule skipped)');
 check(res.written == true, 'override file written');
+check(res.unchanged == false, 'a fresh write is not reported as unchanged');
 check(stat(GEN) != null, 'override file exists on disk');
 check(length(res.errors) == 1, 'the invalid rule is reported');
 check(length(res.applied) == 4, 'four rules applied');
@@ -187,6 +190,46 @@ check(match(warn[0], /openclash/), 'warning names the affected entry');
 
 print("\n### 10. env override hook\n");
 check(mm.status({ menu_dir: WORK + '/menu.d' }).rules == 5, 'opts override works');
+
+print("\n### 11. 原子/幂等写入 + 内容比对过期判定\n");
+
+set_uci_state(json(UCI_STATE_ORIG));
+unlink(GEN); /* 从「文件不存在」开始，先验证真的会写 */
+let a1 = mm.apply(OPTS);
+check(a1.written && !a1.unchanged, 'apply writes the file when it is missing');
+
+let mtime1 = stat(GEN).mtime;
+let a2 = mm.apply(OPTS);
+check(!a2.written && a2.unchanged, 'identical content is not rewritten');
+check(stat(GEN).mtime == mtime1, 'mtime kept when content is identical (menu cache stays valid)');
+check(stat(GEN + '.tmp') == null, 'no leftover .tmp file');
+check(mm.status(OPTS).stale == false, 'not stale right after apply');
+
+/* 只改 mtime、内容不变：旧的 mtime 判定在这里会误报过期 */
+writefile(WORK + '/menu.d/luci-app-nfs.json', readfile(WORK + '/menu.d/luci-app-nfs.json'));
+check(mm.status(OPTS).stale == false, 'touch with identical content is not stale');
+
+/* 新增一个没被规则引用的 menu.d：生成内容不变，所以也不算过期 */
+writefile(WORK + '/menu.d/zz-newapp.json',
+	sprintf('%.J\n', { 'admin/services/newapp': { title: 'New App', action: { type: 'view', path: 'services/newapp' } } }));
+check(mm.status(OPTS).stale == false, 'unreferenced new menu.d is not stale');
+unlink(WORK + '/menu.d/zz-newapp.json');
+
+/* 改规则：生成内容会变 → 立刻算过期 */
+let state = json(UCI_STATE_ORIG);
+state['menu-move']['cfg01']['order'] = '99';
+set_uci_state(state);
+check(mm.status(OPTS).stale == true, 'changed rule is detected as stale');
+
+/* 关掉总开关：期望状态是「没有覆盖文件」，所以也算过期（要清理） */
+state['menu-move']['settings']['enabled'] = '0';
+set_uci_state(state);
+check(mm.status(OPTS).stale == true, 'disabling is detected as stale (file must go away)');
+
+/* 收尾：恢复出厂 fixtures 并重新生成（后面的仿真步骤依赖它） */
+set_uci_state(json(UCI_STATE_ORIG));
+mm.apply(OPTS);
+check(stat(GEN) != null, 'fixture override restored for the simulation step');
 
 print(sprintf('\n==== %d checks, %d failures ====\n', checks, fails));
 exit(fails ? 1 : 0);
