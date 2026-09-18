@@ -87,7 +87,7 @@ env:
 Actions → 最近一次运行 → **Summary** → 下载 `luci-app-menuMove` artifact，解压得到：
 
 ```
-luci-app-menuMove_1.0.0-2_all.apk           # 主包
+luci-app-menuMove_1.0.0-3_all.apk           # 主包
 luci-i18n-menuMove-zh-cn_*.apk              # 中文翻译包（workflow 里已打开 LUCI_LANG_zh_Hans）
 ```
 
