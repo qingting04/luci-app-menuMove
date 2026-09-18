@@ -8,7 +8,7 @@
  * MENU_MOVE_* at the fixture directories, so no root access is needed.
  */
 
-import * as mm from 'menu-move';
+import * as mm from 'luci.menu-move';
 import { readfile, writefile, stat, unlink, dirname } from 'fs';
 
 const BASE = dirname(SCRIPT_NAME);

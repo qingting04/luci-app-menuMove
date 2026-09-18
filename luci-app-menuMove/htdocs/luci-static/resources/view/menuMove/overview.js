@@ -166,7 +166,7 @@ return view.extend({
 		s.anonymous = true;
 		s.addremove = true;
 		s.sortable = true;
-		s.description = _('Leave "order" empty to keep the order of the original entry. Rules with a non-existent source entry (app not installed any more) are ignored and reported.');
+		s.description = _('Pick the tab to move and the section it should live in. "order" is the sort weight inside the target section (lower comes first, empty keeps the original value) and "new title" renames the tab; to only reorder a tab, set the target to its own section. Rules whose source entry no longer exists (app uninstalled) are skipped and reported.');
 
 		var o1 = s.option(form.ListValue, 'from', _('Tab to move'));
 		o1.rmempty = false;
@@ -189,18 +189,15 @@ return view.extend({
 		entries.forEach(function(e) {
 			o2.value(e.path, '%s [%s]'.format(_(e.title), e.path));
 		});
-		o2.description = _('Usually a section such as "admin/services". Any existing menu path can be used, the moved tab is added below it.');
 
 		var o3 = s.option(form.Value, 'order', _('Order'));
 		o3.datatype = 'uinteger';
 		o3.placeholder = '100';
 		o3.modalonly = false;
-		o3.description = _('Sort weight inside the target section, lower values come first.');
 
 		var o4 = s.option(form.Value, 'title', _('New title'));
 		o4.modalonly = false;
 		o4.placeholder = _('keep original');
-		o4.description = _('Optional: display the tab under a different name.');
 
 		var o5 = s.option(form.Flag, 'hide_original', _('Hide the original tab'));
 		o5.default = '1';

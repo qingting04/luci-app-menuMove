@@ -12,7 +12,7 @@
  *   menu-move json      dump the full state as JSON
  */
 
-import * as mm from 'menu-move';
+import * as mm from 'luci.menu-move';
 
 const usage = `Usage: menu-move <command>
 

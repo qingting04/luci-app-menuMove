@@ -25,7 +25,11 @@ cp "$HERE"/fixtures/menu.d/*.json "$WORK/menu.d/"
 cp "$HERE"/fixtures/uci-state.json "$WORK/uci-state.json"
 cp "$HERE"/fixtures/lua/*.lua "$WORK/lua/"
 cp "$HERE"/lib/uci-stub.uc "$WORK/mods/uci.uc"
-ln -sf "$PKG/ucode/menu-move.uc" "$WORK/mods/menu-move.uc"
+
+# 复刻 luci.mk 的真实安装布局：${CURDIR}/ucode/* -> /usr/share/ucode/luci/*
+# （模块名因此是 luci.menu-move，而不是裸的 menu-move）
+mkdir -p "$WORK/mods/luci"
+ln -sf "$PKG/ucode/menu-move.uc" "$WORK/mods/luci/menu-move.uc"
 
 # Make all ucode modules visible through one single -L directory: the module
 # search path of some ucode builds does not accept several -L arguments.
@@ -58,10 +62,21 @@ echo
 echo "== rpcd plugin =="
 # rpcd loads plugin files in ucode "raw mode" and uses the top level return
 # value as the ubus method signature - run it exactly that way.
-"$UCODE" -R -L "$WORK/mods" "$PKG/root/usr/share/rpcd/ucode/menu-move" \
+"$UCODE" -R -L "$WORK/mods" "$PKG/root/usr/share/rpcd/ucode/luci.menu-move" \
 	&& echo "ok    plugin loads in rpcd raw mode"
-grep -q "menu_move:" "$PKG/root/usr/share/rpcd/ucode/menu-move" \
+grep -q "menu_move:" "$PKG/root/usr/share/rpcd/ucode/luci.menu-move" \
 	&& echo "ok    ubus object menu_move is declared"
+
+echo
+echo "== 部署路径一致性（防止再出现「导入名 ≠ 安装路径」这类问题）=="
+if grep -rn "from 'menu[-]move'" "$PKG/root" "$PKG/ucode" "$HERE/test.uc" "$HERE/simulate_menu.py" 2>/dev/null; then
+	echo "FAIL  还有文件用裸模块名 'menu-move' 导入（luci.mk 装到 /usr/share/ucode/luci/）"
+	exit 1
+else
+	echo "ok    所有导入都用 luci.menu-move"
+fi
+# 真的按安装布局验一遍：模块在 <dir>/luci/menu-move.uc，用 luci.menu-move 导入
+"$UCODE" -L "$WORK/mods" -e "import * as mm from 'luci.menu-move'; print('ok    luci.menu-move 按安装布局解析成功（GEN_NAME=' + mm.GEN_NAME + '）\n');"
 
 echo
 echo "== menu simulation (dispatcher + client menu algorithm) =="

@@ -5,7 +5,7 @@ msgstr ""
 "POT-Creation-Date: 2026-09-19 00:00+0800\n"
 "PO-Revision-Date: 2026-09-19 00:00+0800\n"
 "Last-Translator: \n"
-"Language-Team: Simplified Chinese\n"
+"Language-Team: \n"
 "Language: zh_Hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -39,9 +39,6 @@ msgstr "生成的文件"
 msgid "Hide the original tab"
 msgstr "隐藏原位置的标签"
 
-msgid "Leave \"order\" empty to keep the order of the original entry. Rules with a non-existent source entry (app not installed any more) are ignored and reported."
-msgstr "“排序”留空表示保持原条目的排序。源条目不存在的规则（例如插件已卸载）会被忽略并报告。"
-
 msgid "Menu Tabs"
 msgstr "菜单标签"
 
@@ -66,9 +63,6 @@ msgstr "注意：标记文件 %s 存在，被隐藏的条目会重新显示。"
 msgid "Nothing to do - the menu is left untouched."
 msgstr "无需操作 — 菜单保持不变。"
 
-msgid "Optional: display the tab under a different name."
-msgstr "可选：用另一个名字显示该标签。"
-
 msgid "Order"
 msgstr "排序"
 
@@ -77,6 +71,9 @@ msgstr "已写入覆盖文件：%s"
 
 msgid "Path"
 msgstr "路径"
+
+msgid "Pick the tab to move and the section it should live in. \"order\" is the sort weight inside the target section (lower comes first, empty keeps the original value) and \"new title\" renames the tab; to only reorder a tab, set the target to its own section. Rules whose source entry no longer exists (app uninstalled) are skipped and reported."
+msgstr "选择要移动的标签，以及它应该待在哪个分区。「排序」是它在目标分区里的权重（越小越靠前，留空保持原值），「新名称」用于重命名该标签；只想调整顺序时，把目标分区填成它自己所在的分区即可。源条目不存在的规则（例如插件已卸载）会被跳过并在下面报告。"
 
 msgid "Regenerate menu now"
 msgstr "立即重新生成"
@@ -89,9 +86,6 @@ msgstr "规则数"
 
 msgid "Show the current menu entries (%d)"
 msgstr "查看当前菜单条目（共 %d 项）"
-
-msgid "Sort weight inside the target section, lower values come first."
-msgstr "在目标分区内的排序权重，数值越小越靠前。"
 
 msgid "Status"
 msgstr "状态"
@@ -119,9 +113,6 @@ msgstr "标题"
 
 msgid "Type"
 msgstr "类型"
-
-msgid "Usually a section such as \"admin/services\". Any existing menu path can be used, the moved tab is added below it."
-msgstr "通常是像 admin/services 这样的分区。任何已存在的菜单路径都可以，被移动的标签会添加在它下面。"
 
 msgid "When disabled the override file is removed and the original menu layout is restored."
 msgstr "禁用时会删除覆盖文件，恢复原始菜单布局。"

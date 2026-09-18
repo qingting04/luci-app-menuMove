@@ -10,7 +10,7 @@
  * with the /usr/bin/menu-move CLI tool.
  */
 
-import * as move from 'menu-move';
+import * as move from 'luci.menu-move';
 
 return {
 	menu_move: {

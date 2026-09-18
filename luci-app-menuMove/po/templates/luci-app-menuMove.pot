@@ -3,9 +3,9 @@ msgstr ""
 "Project-Id-Version: luci-app-menuMove\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-09-19 00:00+0800\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"PO-Revision-Date: 2026-09-19 00:00+0800\n"
+"Last-Translator: \n"
+"Language-Team: \n"
 "Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -39,9 +39,6 @@ msgstr ""
 msgid "Hide the original tab"
 msgstr ""
 
-msgid "Leave \"order\" empty to keep the order of the original entry. Rules with a non-existent source entry (app not installed any more) are ignored and reported."
-msgstr ""
-
 msgid "Menu Tabs"
 msgstr ""
 
@@ -66,9 +63,6 @@ msgstr ""
 msgid "Nothing to do - the menu is left untouched."
 msgstr ""
 
-msgid "Optional: display the tab under a different name."
-msgstr ""
-
 msgid "Order"
 msgstr ""
 
@@ -76,6 +70,9 @@ msgid "Override file written: %s"
 msgstr ""
 
 msgid "Path"
+msgstr ""
+
+msgid "Pick the tab to move and the section it should live in. \"order\" is the sort weight inside the target section (lower comes first, empty keeps the original value) and \"new title\" renames the tab; to only reorder a tab, set the target to its own section. Rules whose source entry no longer exists (app uninstalled) are skipped and reported."
 msgstr ""
 
 msgid "Regenerate menu now"
@@ -88,9 +85,6 @@ msgid "Rules"
 msgstr ""
 
 msgid "Show the current menu entries (%d)"
-msgstr ""
-
-msgid "Sort weight inside the target section, lower values come first."
 msgstr ""
 
 msgid "Status"
@@ -118,9 +112,6 @@ msgid "Title"
 msgstr ""
 
 msgid "Type"
-msgstr ""
-
-msgid "Usually a section such as \"admin/services\". Any existing menu path can be used, the moved tab is added below it."
 msgstr ""
 
 msgid "When disabled the override file is removed and the original menu layout is restored."

@@ -167,7 +167,7 @@ uci commit menu-move
 .
 ├── luci-app-menuMove/                       # LuCI 插件包
 │   ├── Makefile                             #   luci.mk 包定义（opkg / apk 都能编）
-│   ├── ucode/menu-move.uc                   #   核心逻辑（扫描合并 menu.d → 克隆 + 隐藏 → 生成 JSON）
+│   ├── ucode/menu-move.uc                   #   核心逻辑（luci.mk 安装为 /usr/share/ucode/luci/menu-move.uc，导入名 luci.menu-move）
 │   ├── htdocs/luci-static/resources/view/menuMove/overview.js   # 网页界面
 │   ├── po/{templates,zh_Hans}/              #   中英文翻译
 │   ├── root/
@@ -175,7 +175,7 @@ uci commit menu-move
 │   │   ├── etc/init.d/menu-move             #   procd 触发器：配置一改就重新生成
 │   │   ├── etc/uci-defaults/90-luci-app-menuMove   # 安装后立即生成一次
 │   │   ├── usr/bin/menu-move                #   命令行工具
-│   │   ├── usr/share/rpcd/ucode/menu-move   #   ubus 对象 menu_move（网页界面调用）
+│   │   ├── usr/share/rpcd/ucode/luci.menu-move   # ubus 对象 menu_move（界面调用，rpcd ucode 插件）
 │   │   ├── usr/share/luci/menu.d/luci-app-menuMove.json   # 本插件自己的菜单入口
 │   │   └── usr/share/rpcd/acl.d/luci-app-menuMove.json    # 权限声明
 │   └── test/                                # 本地测试（不需要路由器）
@@ -224,6 +224,15 @@ fork 后如需修改 workflow 顶部的 4 个变量（纯 LuCI 插件其实不�
   但 **UCI config 名、ubus 对象名、init.d 脚本名、命令行名保持 kebab-case**：`menu-move` / `menu_move`（OpenWrt 系统机制约定）。
 - **LuCI 版本**：JS 框架需 LuCI 23.05+，ImmortalWrt 23.05 / 24.10 / 25.x 均支持。
 - 改包名只需改目录名 + `PKG_NAME`；`luci.mk` 用目录名推导 `LUCI_BASENAME`（这里是 `menuMove`），所以翻译包叫 `luci-i18n-menuMove-zh-cn`。
+
+## 排错
+
+| 现象 | 处理 |
+|------|------|
+| 状态区提示「无法访问 rpcd 插件 `menu_move`」 | rpcd 还没加载到插件：`/etc/init.d/rpcd reload`（等价 `kill -HUP $(pidof rpcd)`），然后 `ubus list \| grep menu_move` 应能看到该对象。插件在 `/usr/share/rpcd/ucode/luci.menu-move`，核心模块在 `/usr/share/ucode/luci/menu-move.uc`；加载失败的原因见 `logread \| grep -i rpcd` |
+| 点「保存并应用」后菜单没变化 | 点「立即重新生成」，再硬刷新（Ctrl+Shift+R，浏览器会缓存菜单树）。`menu-move status` 的 `stale` 会提示覆盖文件是否过期 |
+| 被隐藏的标签又出现了 | 看 `/usr/lib/luci-menu-move/.disabled` 是否存在（存在即解除隐藏）；或规则被禁用、总开关关了 |
+| 原位置的标签还在 | 该规则没勾选「隐藏原位置的标签」；或这条菜单由老式 Lua controller 定义（命令行会警告） |
 
 ## 许可
 

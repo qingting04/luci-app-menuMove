@@ -3,9 +3,10 @@
 /*
  * menu-move - re-organize LuCI tabs in the web interface.
  *
- * Shared logic, used by
- *   - /usr/bin/menu-move              (CLI, for SSH users)
- *   - /usr/share/rpcd/ucode/menu-move (ubus object "menu_move")
+ * Installed by luci.mk as /usr/share/ucode/luci/menu-move.uc (UCODE_LIBRARYDIR),
+ * so it is imported as 'luci.menu-move' from:
+ *   - /usr/bin/menu-move                  (CLI, for SSH users)
+ *   - /usr/share/rpcd/ucode/luci.menu-move (ubus object "menu_move")
  *
  * Background - how the LuCI menu is built (LuCI modules/luci-base/ucode/dispatcher.uc):
  *
