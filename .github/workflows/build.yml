@@ -38,7 +38,7 @@ jobs:
           restore-keys: |
             ccache-${{ env.SDK_VERSION }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-
 
-            - name: Download ImmortalWrt SDK
+      - name: Download ImmortalWrt SDK
         run: |
           test -s sdk.tar.zst || wget -q -O sdk.tar.zst \
             "https://downloads.immortalwrt.org/releases/${SDK_VERSION}/targets/${TARGET}/${SUBTARGET}/immortalwrt-sdk-${SDK_VERSION}-${TARGET}-${SUBTARGET}_gcc-${GCC}_musl.Linux-x86_64.tar.zst"
