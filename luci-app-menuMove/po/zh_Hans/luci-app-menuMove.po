@@ -96,6 +96,3 @@ msgstr "隐藏原位置的标签"
 msgid "Enabled"
 msgstr "启用"
 
-msgid "Status"
-msgstr "状态"
-

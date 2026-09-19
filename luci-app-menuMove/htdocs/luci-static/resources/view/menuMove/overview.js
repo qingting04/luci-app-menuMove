@@ -271,17 +271,6 @@ return view.extend({
 		return m.render().then(function(mapNode) {
 			var blocks = [];
 
-			/* --- status / actions ------------------------------------- */
-			var statusLines = (state instanceof Error)
-				? [ '⚠ %s'.format(state.message) ]
-				: status_lines(state);
-
-			blocks.push(E('div', { 'class': 'cbi-section' }, [
-				E('h3', {}, _('Status')),
-				E('div', { 'class': 'cbi-section-descr' }, statusLines.map(function(l) {
-					return E('div', {}, l);
-				}))
-			]));
 
 			return E('div', {}, [ mapNode ].concat(blocks));
 		});
