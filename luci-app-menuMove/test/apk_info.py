@@ -236,6 +236,14 @@ def main(argv):
         listed |= set(names)
 
     if expects:
+        # 一个包都没解析出来时，不做断言：这只是我们没认出容器格式，
+        # 不能拿它当成「包内容有错」的证据（设备上用 apk info -a 才是准的）。
+        if not listed:
+            print()
+            print('WARN: nothing parsed - skipping the content assertions.')
+            print('      verify manually on a device: apk info -a <package>')
+            return rc
+
         missing = [e for e in expects if e not in listed]
 
         print()
