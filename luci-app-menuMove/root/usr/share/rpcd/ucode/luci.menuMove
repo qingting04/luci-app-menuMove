@@ -6,23 +6,23 @@
  *   ubus call menu_move status
  *   ubus call menu_move apply
  *
- * The heavy lifting lives in /usr/share/ucode/luci/menu-move.uc, which is
+ * The heavy lifting lives in /usr/share/ucode/luci/menuMove.uc, which is
  * shared with the /usr/bin/menu-move CLI tool.
  */
 
-import * as move from 'luci.menu-move';
+import { status, apply } from 'luci.menuMove';
 
 return {
 	menu_move: {
 		status: {
 			call: function() {
-				return move.status();
+				return status();
 			}
 		},
 
 		apply: {
 			call: function() {
-				return move.apply();
+				return apply();
 			}
 		}
 	}

@@ -171,7 +171,7 @@ uci commit menu-move
 .
 ├── luci-app-menuMove/                       # LuCI 插件包
 │   ├── Makefile                             #   luci.mk 包定义（opkg / apk 都能编）
-│   ├── ucode/menu-move.uc                   #   核心逻辑（luci.mk 安装为 /usr/share/ucode/luci/menu-move.uc，导入名 luci.menu-move）
+│   ├── ucode/menuMove.uc                   #   核心逻辑（luci.mk 安装为 /usr/share/ucode/luci/menuMove.uc，导入名 luci.menuMove）
 │   ├── htdocs/luci-static/resources/view/menuMove/overview.js   # 网页界面
 │   ├── po/{templates,zh_Hans}/              #   中英文翻译
 │   ├── root/
@@ -179,7 +179,7 @@ uci commit menu-move
 │   │   ├── etc/init.d/menu-move             #   procd 触发器：配置一改就重新生成
 │   │   ├── etc/uci-defaults/90-luci-app-menuMove   # 安装后立即生成一次
 │   │   ├── usr/bin/menu-move                #   命令行工具（网页界面也调它）
-│   │   ├── usr/share/rpcd/ucode/luci.menu-move   # ubus 对象 menu_move（可选 API，界面不依赖它）
+│   │   ├── usr/share/rpcd/ucode/luci.menuMove   # ubus 对象 menu_move（可选 API，界面不依赖它）
 │   │   ├── usr/share/luci/menu.d/luci-app-menuMove.json   # 本插件自己的菜单入口
 │   │   └── usr/share/rpcd/acl.d/luci-app-menuMove.json    # 权限声明（uci + file exec + ubus）
 │   └── test/                                # 本地测试（不需要路由器）
@@ -231,7 +231,7 @@ fork 后如需修改 workflow 顶部的 4 个变量（纯 LuCI 插件其实不�
 - **LuCI 版本**：JS 框架需 LuCI 23.05+，ImmortalWrt 23.05 / 24.10 / 25.x 均支持。
 - **ucode 语法保持保守**：模块与 CLI 只用老固件都支持的写法 —— 不用空值合并（两个问号）、可选链、模板字符串，也不用 ucode 特有的多变量 for-in。路由器上曾因为用了这些写法而编译不过，报的是一串 `Expecting ';'` 语法错（当时界面上只能看到「无法访问插件」，非常难查）。`test/check.py` 第 7 节会静态检查这一条，CI 里会跑。
 - **为什么网页界面不直接用 ubus 插件**：`fs.exec('/usr/bin/menu-move', [...])` 走的是系统自带的 `file` 对象，只要 rpcd 在就能用；而且能把命令的 stderr 原样显示出来。`menu_move` ubus 对象仍然保留，供脚本/其它服务调用（`ubus call menu_move status|apply`）。
-- **CI 每次都会打印包内文件清单**，装完可以对着确认 `menu-move.uc` 落在 `/usr/share/ucode/luci/` 下。
+- **CI 每次都会打印包内文件清单**，装完可以对着确认 `menuMove.uc` 落在 `/usr/share/ucode/luci/` 下。
 - 改包名只需改目录名 + `PKG_NAME`；`luci.mk` 用目录名推导 `LUCI_BASENAME`（这里是 `menuMove`），所以翻译包叫 `luci-i18n-menuMove-zh-cn`。
 
 ## 排错
@@ -240,7 +240,7 @@ fork 后如需修改 workflow 顶部的 4 个变量（纯 LuCI 插件其实不�
 
 ```sh
 /usr/bin/menu-move status                    # 命令行能不能跑（报错原文就是根因）
-ls -l /usr/share/ucode/luci/menu-move.uc /usr/share/rpcd/ucode/  # 文件是否就位
+ls -l /usr/share/ucode/luci/menuMove.uc /usr/share/rpcd/ucode/  # 文件是否就位
 ubus list | grep menu_move                   # 可选的 ubus 对象是否注册
 logread -e menu-move; logread -e rpcd        # 触发器/加载报错
 ```

@@ -8,17 +8,19 @@
  * MENU_MOVE_* at the fixture directories, so no root access is needed.
  */
 
-import * as mm from 'luci.menu-move';
+import {
+	MENU_DIR, GEN_NAME, MARKER, CONFIG, LUA_DIR, clone, merge_specs, norm_path, last_segment, read_specs, read_rules, build_plan, render_overrides, lua_conflicts, status, apply
+} from 'luci.menuMove';
 import { readfile, writefile, stat, unlink, dirname } from 'fs';
 
 const BASE = dirname(SCRIPT_NAME);
 const WORK = BASE + '/work';
 const OPTS = {
 	menu_dir: WORK + '/menu.d',
-	gen_path: WORK + '/menu.d/' + mm.GEN_NAME,
+	gen_path: WORK + '/menu.d/' + GEN_NAME,
 	marker: WORK + '/marker/.disabled',
 	lua_dir: WORK + '/lua',
-	config: mm.CONFIG
+	config: CONFIG
 };
 const GEN = OPTS.gen_path;
 const UCI_STATE = WORK + '/uci-state.json';
@@ -49,16 +51,16 @@ if (stat(GEN))
 	unlink(GEN);
 
 print("### 1. read_specs / merge semantics\n");
-let scan = mm.read_specs(OPTS);
+let scan = read_specs(OPTS);
 check(exists(scan.specs, 'admin/nas/nfs'), 'read_specs finds admin/nas/nfs');
 check(scan.specs['admin/nas/nfs'].title == 'NFS', 'title of admin/nas/nfs is NFS');
 check(scan.specs['admin/nas/nfs'].action.path == 'nas/nfs', 'action.path preserved');
-check(!exists(scan.specs, mm.GEN_NAME), 'a generated file is never read back');
+check(!exists(scan.specs, GEN_NAME), 'a generated file is never read back');
 check(scan.specs['admin/services'].action.type == 'firstchild', 'section action preserved');
 check(scan.specs['admin/services/openclash'].title == 'OpenClash', 'later file overrides earlier one');
 
 print("\n### 2. build_plan: move a leaf entry and hide the original\n");
-let plan = mm.build_plan(scan.specs, [
+let plan = build_plan(scan.specs, [
 	{ from: 'admin/nas/nfs', to: 'admin/services', order: 45, title: '', hide_original: true }
 ], OPTS.marker);
 
@@ -76,7 +78,7 @@ check(plan.overrides['admin/nas/nfs'].depends.acl[0] == 'luci-app-nfs', 'origina
 check(plan.overrides['admin/nas/nfs'].title == 'NFS', 'original entry keeps title/action properties');
 
 print("\n### 3. build_plan: subtree move\n");
-let plan2 = mm.build_plan(scan.specs, [
+let plan2 = build_plan(scan.specs, [
 	{ from: 'admin/nas/aria2', to: 'admin/services', order: 46, hide_original: true }
 ], OPTS.marker);
 check(exists(plan2.overrides, 'admin/services/aria2'), 'subtree root moved');
@@ -85,7 +87,7 @@ check(plan2.overrides['admin/services/aria2/log'].title == 'Log', 'child keeps i
 check(plan2.overrides['admin/services/aria2/log'].order == 10, 'child keeps its own order');
 
 print("\n### 4. build_plan: in-place ordering (same section)\n");
-let plan3 = mm.build_plan(scan.specs, [
+let plan3 = build_plan(scan.specs, [
 	{ from: 'admin/services/ttyd', to: 'admin/services', order: 5, title: 'Terminal (custom)', hide_original: true }
 ], OPTS.marker);
 check(exists(plan3.overrides, 'admin/services/ttyd'), 'in-place entry overridden');
@@ -95,7 +97,7 @@ check(plan3.overrides['admin/services/ttyd'].depends.fs == null, 'in-place entry
 check(plan3.applied[0].in_place == true, 'in_place flag set');
 
 print("\n### 5. build_plan: rejected rules\n");
-let errs = mm.build_plan(scan.specs, [
+let errs = build_plan(scan.specs, [
 	{ from: 'admin/does/notexist', to: 'admin/services', hide_original: true },
 	{ from: 'admin/services/ttyd', to: 'admin/nas', hide_original: true },
 	{ from: 'admin/nas/nfs', to: 'admin/not-a-section', hide_original: true },
@@ -123,7 +125,7 @@ check(errs.overrides['admin/nas/nfs'].depends.fs == null, 'the in-place rule for
 print("\n### 6. apply() end to end\n");
 /* 先删掉覆盖文件，确保这一节真的测到「写入」而不是「内容一致跳过」 */
 unlink(GEN);
-let res = mm.apply(OPTS);
+let res = apply(OPTS);
 check(res.enabled == true, 'config is enabled');
 check(res.rules == 5, 'five enabled rules read from uci (one disabled rule skipped)');
 check(res.written == true, 'override file written');
@@ -146,14 +148,14 @@ check(parsed['admin/status/samba'].title == 'Network Shares', 'generated: samba 
 check(keys(parsed)[length(keys(parsed)) - 1] == 'admin/status/samba', 'generated: last key is admin/status/samba (sorted output)');
 
 print("\n### 7. status() and idempotency\n");
-let st = mm.status(OPTS);
+let st = status(OPTS);
 check(st.exists == true, 'status: override present');
 check(st.stale == false, 'status: not stale right after apply');
 check(st.rules == 5, 'status: rule count');
 
 let first = readfile(GEN);
 sleep(1100);
-mm.apply(OPTS);
+apply(OPTS);
 check(readfile(GEN) == first, 'apply is idempotent');
 
 print("\n### 8. disabling the config removes the override\n");
@@ -161,7 +163,7 @@ let off = uci_state();
 off['menu-move'].settings.enabled = '0';
 set_uci_state(off);
 
-let res2 = mm.apply(OPTS);
+let res2 = apply(OPTS);
 check(res2.removed == true, 'override file removed when disabled');
 check(stat(GEN) == null, 'override file is gone');
 
@@ -173,15 +175,15 @@ delete none['menu-move'].cfg04;
 delete none['menu-move'].cfg05;
 set_uci_state(none);
 
-let res3 = mm.apply(OPTS);
+let res3 = apply(OPTS);
 check(res3.written == false && res3.removed == false, 'no rules: nothing written, nothing removed');
 
 set_uci_state(json(UCI_STATE_ORIG));
-mm.apply(OPTS);
+apply(OPTS);
 check(stat(GEN) != null, 'override restored for the simulation step');
 
 print("\n### 9. legacy Lua controller detection\n");
-let warn = mm.lua_conflicts(OPTS, [
+let warn = lua_conflicts(OPTS, [
 	{ from: 'admin/services/openclash', hide_original: true },
 	{ from: 'admin/nas/nfs', hide_original: true }
 ]);
@@ -189,46 +191,46 @@ check(length(warn) == 1, 'exactly one Lua controller warning');
 check(match(warn[0], /openclash/), 'warning names the affected entry');
 
 print("\n### 10. env override hook\n");
-check(mm.status({ menu_dir: WORK + '/menu.d' }).rules == 5, 'opts override works');
+check(status({ menu_dir: WORK + '/menu.d' }).rules == 5, 'opts override works');
 
 print("\n### 11. 原子/幂等写入 + 内容比对过期判定\n");
 
 set_uci_state(json(UCI_STATE_ORIG));
 unlink(GEN); /* 从「文件不存在」开始，先验证真的会写 */
-let a1 = mm.apply(OPTS);
+let a1 = apply(OPTS);
 check(a1.written && !a1.unchanged, 'apply writes the file when it is missing');
 
 let mtime1 = stat(GEN).mtime;
-let a2 = mm.apply(OPTS);
+let a2 = apply(OPTS);
 check(!a2.written && a2.unchanged, 'identical content is not rewritten');
 check(stat(GEN).mtime == mtime1, 'mtime kept when content is identical (menu cache stays valid)');
 check(stat(GEN + '.tmp') == null, 'no leftover .tmp file');
-check(mm.status(OPTS).stale == false, 'not stale right after apply');
+check(status(OPTS).stale == false, 'not stale right after apply');
 
 /* 只改 mtime、内容不变：旧的 mtime 判定在这里会误报过期 */
 writefile(WORK + '/menu.d/luci-app-nfs.json', readfile(WORK + '/menu.d/luci-app-nfs.json'));
-check(mm.status(OPTS).stale == false, 'touch with identical content is not stale');
+check(status(OPTS).stale == false, 'touch with identical content is not stale');
 
 /* 新增一个没被规则引用的 menu.d：生成内容不变，所以也不算过期 */
 writefile(WORK + '/menu.d/zz-newapp.json',
 	sprintf('%.J\n', { 'admin/services/newapp': { title: 'New App', action: { type: 'view', path: 'services/newapp' } } }));
-check(mm.status(OPTS).stale == false, 'unreferenced new menu.d is not stale');
+check(status(OPTS).stale == false, 'unreferenced new menu.d is not stale');
 unlink(WORK + '/menu.d/zz-newapp.json');
 
 /* 改规则：生成内容会变 → 立刻算过期 */
 let state = json(UCI_STATE_ORIG);
 state['menu-move']['cfg01']['order'] = '99';
 set_uci_state(state);
-check(mm.status(OPTS).stale == true, 'changed rule is detected as stale');
+check(status(OPTS).stale == true, 'changed rule is detected as stale');
 
 /* 关掉总开关：期望状态是「没有覆盖文件」，所以也算过期（要清理） */
 state['menu-move']['settings']['enabled'] = '0';
 set_uci_state(state);
-check(mm.status(OPTS).stale == true, 'disabling is detected as stale (file must go away)');
+check(status(OPTS).stale == true, 'disabling is detected as stale (file must go away)');
 
 /* 收尾：恢复出厂 fixtures 并重新生成（后面的仿真步骤依赖它） */
 set_uci_state(json(UCI_STATE_ORIG));
-mm.apply(OPTS);
+apply(OPTS);
 check(stat(GEN) != null, 'fixture override restored for the simulation step');
 
 print(sprintf('\n==== %d checks, %d failures ====\n', checks, fails));

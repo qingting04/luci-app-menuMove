@@ -12,14 +12,15 @@
  *   menu-move json      dump the full state as JSON
  */
 
-import * as mm from 'luci.menu-move';
+import { MENU_DIR, GEN_NAME, MARKER, apply, status, read_specs, read_rules,
+	build_plan, lua_conflicts } from 'luci.menuMove';
 
 /* 不用模板字符串：老固件上的 ucode 未必支持，统一用拼接 */
 const usage = 'Usage: menu-move <command>\n' +
 	'\n' +
 	'Commands:\n' +
 	'  status    show configuration and generated file state\n' +
-	sprintf('  apply     regenerate %s/%s\n', mm.MENU_DIR, mm.GEN_NAME) +
+	sprintf('  apply     regenerate %s/%s\n', MENU_DIR, GEN_NAME) +
 	'  check     dry run - report errors and planned moves without writing\n' +
 	'  paths     list all available menu entry paths\n' +
 	'  json      dump state + plan as JSON\n';
@@ -40,7 +41,7 @@ function print_errors(list, indent) {
 
 switch (cmd) {
 case 'apply':
-	let res = mm.apply();
+	let res = apply();
 
 	if (res.removed)
 		print(sprintf('menu-move: override file removed (%s)\n', res.generated));
@@ -74,8 +75,8 @@ case 'apply':
 	exit(length(res.errors) ? 1 : 0);
 
 case 'check':
-	let scan = mm.read_specs();
-	let rl = mm.read_rules();
+	let scan = read_specs();
+	let rl = read_rules();
 	let plan;
 
 	if (!rl.enabled || !length(rl.rules)) {
@@ -83,7 +84,7 @@ case 'check':
 		exit(0);
 	}
 
-	plan = mm.build_plan(scan.specs, rl.rules, mm.MARKER);
+	plan = build_plan(scan.specs, rl.rules, MARKER);
 
 	print(sprintf('menu-move: %d rule(s), %d will be applied, %d error(s)\n',
 		length(rl.rules), length(plan.applied), length(plan.errors)));
@@ -99,7 +100,7 @@ case 'check':
 	exit(length(plan.errors) ? 1 : 0);
 
 case 'paths':
-	let s = mm.read_specs();
+	let s = read_specs();
 
 	for (let path in sort(keys(s.specs))) {
 		let spec = s.specs[path];
@@ -111,24 +112,24 @@ case 'paths':
 	exit(0);
 
 case 'json':
-	let jst = mm.status();
-	let jscan = mm.read_specs();
-	let jrules = mm.read_rules();
+	let jst = status();
+	let jscan = read_specs();
+	let jrules = read_rules();
 
 	/* the LuCI view parses this output - keep the keys in sync with
 	 * htdocs/luci-static/resources/view/menuMove/overview.js */
 	print(sprintf('%.J\n', {
 		status: jst,
 		specs: keys(jscan.specs),
-		plan: mm.build_plan(jscan.specs, jrules.rules, mm.MARKER),
+		plan: build_plan(jscan.specs, jrules.rules, MARKER),
 		warnings: (jrules.enabled && length(jrules.rules))
-			? mm.lua_conflicts({}, filter(jrules.rules, r => r.hide_original)) : []
+			? lua_conflicts({}, filter(jrules.rules, r => r.hide_original)) : []
 	}));
 
 	exit(0);
 
 case 'status':
-	let st = mm.status();
+	let st = status();
 
 	printf('enabled          %s\n', st.enabled ? 'yes' : 'no');
 	printf('rules            %d\n', st.rules);

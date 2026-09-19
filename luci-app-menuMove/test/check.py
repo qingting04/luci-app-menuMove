@@ -32,7 +32,7 @@ VIEW = os.path.join(PKG, 'htdocs/luci-static/resources/view/menuMove/overview.js
 PO = os.path.join(PKG, 'po/zh_Hans/luci-app-menuMove.po')
 POT = os.path.join(PKG, 'po/templates/luci-app-menuMove.pot')
 ACL = os.path.join(PKG, 'root/usr/share/rpcd/acl.d/luci-app-menuMove.json')
-PLUGIN = os.path.join(PKG, 'root/usr/share/rpcd/ucode/luci.menu-move')
+PLUGIN = os.path.join(PKG, 'root/usr/share/rpcd/ucode/luci.menuMove')
 CLI = os.path.join(PKG, 'root/usr/bin/menu-move')
 CONFIG = os.path.join(PKG, 'root/etc/config/menu-move')
 INITD = os.path.join(PKG, 'root/etc/init.d/menu-move')
@@ -170,19 +170,19 @@ for root, _dirs, files in os.walk(PKG):
         if not name.endswith(('.uc', '.js')) and '/usr/bin/' not in os.path.join(root, name):
             continue
         path = os.path.join(root, name)
-        if re.search(r"from\s+'menu-move'|from\s+\"menu-move\"", read(path)):
+        if re.search(r"from\s+'menuMove'|from\s+\"menu-move\"", read(path)):
             bad_imports.append(os.path.relpath(path, PKG))
 
 if bad_imports:
     bad('这些文件用了裸模块名 menu-move（luci.mk 装到 /usr/share/ucode/luci/）：%r' % bad_imports)
 else:
-    ok('所有导入都使用 luci.menu-move')
+    ok('所有导入都使用 luci.menuMove')
 
 if os.path.isdir(os.path.join(PKG, 'ucode')) and re.search(
-        r"from\s+'luci\.menu-move'", read(CLI)):
-    ok('CLI 以 luci.menu-move 导入模块（与 luci.mk 的 UCODE_LIBRARYDIR 一致）')
+        r"from\s+'luci\.menuMove'", read(CLI)):
+    ok('CLI 以 luci.menuMove 导入模块（与 luci.mk 的 UCODE_LIBRARYDIR 一致）')
 else:
-    bad('CLI 必须用 luci.menu-move 导入模块')
+    bad('CLI 必须用 luci.menuMove 导入模块')
 
 # --- 4. rpcd plugin / ubus object ------------------------------------------
 section('4. rpcd 插件与 ubus 对象')
@@ -287,7 +287,7 @@ def strip_comments(src):
 
 
 ucode_files = [
-    os.path.join(PKG, 'ucode/menu-move.uc'),
+    os.path.join(PKG, 'ucode/menuMove.uc'),
     os.path.join(PKG, 'root/usr/bin/menu-move'),
 ]
 

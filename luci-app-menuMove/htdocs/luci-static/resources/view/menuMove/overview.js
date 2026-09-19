@@ -14,7 +14,7 @@
  *   - it does not depend on the optional "menu_move" ubus object, so the page
  *     keeps working when that plugin is unavailable;
  *   - whatever the CLI prints on stderr - e.g. an ucode error while loading
- *     /usr/share/ucode/luci/menu-move.uc - is shown verbatim instead of being
+ *     /usr/share/ucode/luci/menuMove.uc - is shown verbatim instead of being
  *     swallowed, which makes deployment problems visible.
  *
  * The override file is regenerated right after "Save & apply" and by the
