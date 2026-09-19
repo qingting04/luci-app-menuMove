@@ -212,7 +212,7 @@ export function read_specs(o) {
 };
 
 export function read_rules(o) {
-	let opts = defaults(o), c = cursor(), rules = [], enabled = true;
+	let opts = defaults(o), c = cursor(), rules = [], ignored = [], enabled = true;
 
 	c.load(opts.config);
 	enabled = nvl(c.get(opts.config, 'settings', 'enabled'), '1') != '0';
@@ -221,16 +221,25 @@ export function read_rules(o) {
 		if (nvl(s.enabled, '1') == '0')
 			return;
 
+		let from = trim(nvl(s.from, '')), to = trim(nvl(s.to, ''));
+
+		/* 空草稿段（页面刚点“添加”、还没填 from）不是错误，单独统计，
+		 * 否则每次 check/apply 都会凭空报一条 invalid source path。 */
+		if (!length(from)) {
+			push(ignored, { from: from, to: to });
+			return;
+		}
+
 		push(rules, {
-			from: trim(nvl(s.from, '')),
-			to: trim(nvl(s.to, '')),
+			from: from,
+			to: to,
 			title: trim(nvl(s.title, '')),
 			order: to_int(s.order),
 			hide_original: nvl(s.hide_original, '1') != '0'
 		});
 	});
 
-	return { enabled: enabled, rules: rules };
+	return { enabled: enabled, rules: rules, ignored: ignored };
 };
 
 /*
