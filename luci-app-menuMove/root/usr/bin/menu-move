@@ -12,15 +12,17 @@
  *   menu-move json      dump the full state as JSON
  */
 
-import { MENU_DIR, GEN_NAME, MARKER, apply, status, read_specs, read_rules,
+import { menu_paths, apply, status, read_specs, read_rules,
 	build_plan, lua_conflicts } from 'luci.menuMove';
+
+const PATHS = menu_paths();
 
 /* 不用模板字符串：老固件上的 ucode 未必支持，统一用拼接 */
 const usage = 'Usage: menu-move <command>\n' +
 	'\n' +
 	'Commands:\n' +
 	'  status    show configuration and generated file state\n' +
-	sprintf('  apply     regenerate %s/%s\n', MENU_DIR, GEN_NAME) +
+	sprintf('  apply     regenerate %s/%s\n', PATHS.menu_dir, PATHS.gen_name) +
 	'  check     dry run - report errors and planned moves without writing\n' +
 	'  paths     list all available menu entry paths\n' +
 	'  json      dump state + plan as JSON\n';
@@ -84,7 +86,7 @@ case 'check':
 		exit(0);
 	}
 
-	plan = build_plan(scan.specs, rl.rules, MARKER);
+	plan = build_plan(scan.specs, rl.rules, PATHS.marker);
 
 	print(sprintf('menu-move: %d rule(s), %d will be applied, %d error(s)\n',
 		length(rl.rules), length(plan.applied), length(plan.errors)));
@@ -121,7 +123,7 @@ case 'json':
 	print(sprintf('%.J\n', {
 		status: jst,
 		specs: keys(jscan.specs),
-		plan: build_plan(jscan.specs, jrules.rules, MARKER),
+		plan: build_plan(jscan.specs, jrules.rules, PATHS.marker),
 		warnings: (jrules.enabled && length(jrules.rules))
 			? lua_conflicts({}, filter(jrules.rules, r => r.hide_original)) : []
 	}));

@@ -332,6 +332,29 @@ if noexec:
 else:
     ok('%d 个脚本都有执行位' % len(NEED_X))
 
+# --- 9. 导出写法（设备 ucode 只支持 export function） ------------------------
+section('9. ucode 模块导出写法（老固件兼容）')
+
+NEW_MODERN = [
+    (re.compile(r'(?m)^[ \t]*export[ \t]+(const|let|var)[ \t]'), 'export const/let/var'),
+    (re.compile(r'(?m)^[ \t]*module\.exports\b'), 'module.exports'),
+    (re.compile(r'(?m)^[ \t]*export[ \t]*\{'), 'export { ... }'),
+]
+
+found = []
+
+for path in ucode_files:
+    code = strip_comments(read(path))
+
+    for rx, name in NEW_MODERN:
+        if rx.search(code):
+            found.append('%s 里出现 %s' % (os.path.relpath(path, PKG), name))
+
+if found:
+    bad('设备 ucode 的 export 只支持函数声明（%r）：常量请用 menu_paths() 导出' % found)
+else:
+    ok('%d 个 ucode 文件只用 export function 导出' % len(ucode_files))
+
 # --- summary ---------------------------------------------------------------
 print()
 if FAILURES:

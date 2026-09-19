@@ -35,11 +35,11 @@
 import { readfile, glob, stat, unlink, basename, open, rename } from 'fs';
 import { cursor } from 'uci';
 
-export const MENU_DIR = '/usr/share/luci/menu.d';
-export const GEN_NAME = 'zz-luci-app-menuMove.json';
-export const MARKER = '/usr/lib/luci-menu-move/.disabled';
-export const CONFIG = 'menu-move';
-export const LUA_DIR = '/usr/lib/lua/luci/controller';
+const MENU_DIR = '/usr/share/luci/menu.d';
+const GEN_NAME = 'zz-luci-app-menuMove.json';
+const MARKER = '/usr/lib/luci-menu-move/.disabled';
+const CONFIG = 'menu-move';
+const LUA_DIR = '/usr/lib/lua/luci/controller';
 
 /*
  * Property whitelist and types, kept in sync with the schema used by
@@ -549,4 +549,17 @@ export function apply(o) {
 	}
 
 	return res;
+}
+
+/* 常量导出：设备上的 ucode 只支持 `export function`，不支持 `export const`
+ * （`export const` 会报 Unexpected token / Expecting ';'，见 test/check.py 第 9 节）。
+ * 所以常量保持模块私有，用这个函数导出去。 */
+export function menu_paths() {
+	return {
+		menu_dir: MENU_DIR,
+		gen_name: GEN_NAME,
+		marker: MARKER,
+		config: CONFIG,
+		lua_dir: LUA_DIR
+	};
 }

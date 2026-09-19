@@ -9,18 +9,20 @@
  */
 
 import {
-	MENU_DIR, GEN_NAME, MARKER, CONFIG, LUA_DIR, clone, merge_specs, norm_path, last_segment, read_specs, read_rules, build_plan, render_overrides, lua_conflicts, status, apply
+	menu_paths, clone, merge_specs, norm_path, last_segment, read_specs, read_rules, build_plan, render_overrides, lua_conflicts, status, apply
 } from 'luci.menuMove';
 import { readfile, writefile, stat, unlink, dirname } from 'fs';
+
+const PATHS = menu_paths();
 
 const BASE = dirname(SCRIPT_NAME);
 const WORK = BASE + '/work';
 const OPTS = {
 	menu_dir: WORK + '/menu.d',
-	gen_path: WORK + '/menu.d/' + GEN_NAME,
+	gen_path: WORK + '/menu.d/' + PATHS.gen_name,
 	marker: WORK + '/marker/.disabled',
 	lua_dir: WORK + '/lua',
-	config: CONFIG
+	config: PATHS.config
 };
 const GEN = OPTS.gen_path;
 const UCI_STATE = WORK + '/uci-state.json';
@@ -55,7 +57,7 @@ let scan = read_specs(OPTS);
 check(exists(scan.specs, 'admin/nas/nfs'), 'read_specs finds admin/nas/nfs');
 check(scan.specs['admin/nas/nfs'].title == 'NFS', 'title of admin/nas/nfs is NFS');
 check(scan.specs['admin/nas/nfs'].action.path == 'nas/nfs', 'action.path preserved');
-check(!exists(scan.specs, GEN_NAME), 'a generated file is never read back');
+check(!exists(scan.specs, PATHS.gen_name), 'a generated file is never read back');
 check(scan.specs['admin/services'].action.type == 'firstchild', 'section action preserved');
 check(scan.specs['admin/services/openclash'].title == 'OpenClash', 'later file overrides earlier one');
 
