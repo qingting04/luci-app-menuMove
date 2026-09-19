@@ -102,18 +102,3 @@ msgstr "启用"
 msgid "Status"
 msgstr "状态"
 
-msgid "Regenerate menu now"
-msgstr "立即重新生成"
-
-msgid "Show the current menu entries (%d)"
-msgstr "查看当前菜单条目（共 %d 项）"
-
-msgid "Path"
-msgstr "路径"
-
-msgid "Title"
-msgstr "标题"
-
-msgid "Type"
-msgstr "类型"
-

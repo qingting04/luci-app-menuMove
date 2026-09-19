@@ -286,44 +286,7 @@ return view.extend({
 				E('h3', {}, _('Status')),
 				E('div', { 'class': 'cbi-section-descr' }, statusLines.map(function(l) {
 					return E('div', {}, l);
-				})),
-				E('div', { 'class': 'cbi-page-actions' }, [
-					E('button', {
-						'class': 'btn cbi-button cbi-button-apply',
-						'click': ui.createHandlerFn(self, 'handleRegenerate')
-					}, [ _('Regenerate menu now') ]),
-					' ',
-					E('button', {
-						'class': 'btn cbi-button',
-						'click': function() {
-							ui.menu.flushCache();
-							window.location.reload();
-						}
-					}, [ _('Reload interface') ])
-				])
-			]));
-
-			/* --- reference: current menu structure -------------------- */
-			var rows = entries.map(function(e) {
-				return E('tr', {}, [
-					E('td', { 'style': 'padding:0 .5em' }, e.path),
-					E('td', { 'style': 'padding:0 .5em' }, _(e.title)),
-					E('td', { 'style': 'padding:0 .5em' }, e.type)
-				]);
-			});
-
-			blocks.push(E('details', {}, [
-				E('summary', {}, _('Show the current menu entries (%d)').format(entries.length)),
-				E('div', { 'style': 'max-height:24em;overflow:auto' }, [
-					E('table', { 'class': 'table' }, [
-						E('thead', {}, E('tr', {}, [
-							E('th', {}, _('Path')),
-							E('th', {}, _('Title')),
-							E('th', {}, _('Type'))
-						])),
-						E('tbody', {}, rows)
-					])
-				])
+				}))
 			]));
 
 			return E('div', {}, [ mapNode ].concat(blocks));

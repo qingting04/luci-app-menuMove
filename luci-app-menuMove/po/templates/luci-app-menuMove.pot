@@ -102,18 +102,3 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
-msgid "Regenerate menu now"
-msgstr ""
-
-msgid "Show the current menu entries (%d)"
-msgstr ""
-
-msgid "Path"
-msgstr ""
-
-msgid "Title"
-msgstr ""
-
-msgid "Type"
-msgstr ""
-
