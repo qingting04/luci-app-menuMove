@@ -2,38 +2,39 @@
 """
 列出 OpenWrt .apk / .ipk 包里的文件，并可断言某些路径必须存在（CI 用）。
 
-    # 只看内容
     python3 test/apk_info.py 'bin/packages/**/luci-app-menuMove*.apk'
+    python3 test/apk_info.py --expect /usr/bin/menu-move --expect /etc/init.d/menu-move <apk>
 
-    # 断言必须包含这些路径，缺任何一个退出码非 0（CI 里作为硬门槛）
-    python3 test/apk_info.py --expect /usr/bin/menu-move \
-                             --expect /etc/init.d/menu-move \
-                             'bin/packages/**/luci-app-menuMove*.apk'
-
-为什么要写这个：apk v3 是多段 gzip 拼接（元数据 + data.tar.gz），`tar tzf` 读不出来；
-而且「包里的文件装到哪」曾经出过问题（模块没进包），所以 CI 每次都必须打印并核对
-真实路径，而不是相信 luci.mk 的推导。
+格式说明（踩过的坑）：
+- apk v3 是**多段压缩流拼接**（元数据 + data.tar），`tar tzf` 读不出来；
+- 压缩算法可能是 **gzip**（每段一个 gzip 流），也可能是 **zstd**（多帧）；
+  所以这里先按 magic 判断，再统一解压，然后在流里按 `ustar` 魔数定位 tar 归档。
 """
 
 import glob
 import io
 import os
+import shutil
+import subprocess
 import sys
 import tarfile
 import zlib
 
+GZIP_MAGIC = b'\x1f\x8b'
+ZSTD_MAGIC = b'\x28\xb5\x2f\xfd'
 
-def gzip_members(data):
-    """把拼接的 gzip 流拆成各段。"""
-    parts, off = [], 0
+
+def gzip_blob(data):
+    """拼接的 gzip 流 -> 解压后的字节（逐段解压后拼起来）。"""
+    out, off = b'', 0
 
     while off < len(data):
         dec = zlib.decompressobj(31)
 
         try:
-            parts.append(dec.decompress(data[off:]))
+            out += dec.decompress(data[off:])
         except zlib.error:
-            break
+            return out if out else None
 
         used = len(data[off:]) - len(dec.unused_data)
         if used <= 0:
@@ -41,32 +42,88 @@ def gzip_members(data):
 
         off += used
 
-    return parts
+    return out if out else None
 
 
-def tar_names(blob):
+def zstd_blob(data):
+    """zstd（可能多帧）-> 解压后的字节：优先用 zstandard 模块，其次 zstd 命令行。"""
     try:
-        with tarfile.open(fileobj=io.BytesIO(blob)) as tf:
-            return tf.getnames()
+        import zstandard  # type: ignore
+    except ImportError:
+        zstd = shutil.which('zstd')
+
+        if not zstd:
+            return None
+
+        proc = subprocess.run([zstd, '-dc'], input=data, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL)
+        return proc.stdout or None
+
+    try:
+        return zstandard.ZstdDecompressor().stream_reader(io.BytesIO(data)).read()
     except Exception:
         return None
 
 
+def decompress(data):
+    """返回 (解压内容, 格式名)。"""
+    if data[:2] == GZIP_MAGIC:
+        blob = gzip_blob(data)
+        if blob:
+            return blob, 'gzip'
+
+    if data[:4] == ZSTD_MAGIC:
+        blob = zstd_blob(data)
+        if blob:
+            return blob, 'zstd'
+
+    return None, 'unknown'
+
+
+def tar_names(blob):
+    """在解压流里按 ustar 魔数定位第一个 tar 归档并返回文件列表。"""
+    pos = 0
+
+    while True:
+        i = blob.find(b'ustar', pos)
+
+        if i < 0:
+            return None
+
+        start = i - 257
+
+        if start >= 0:
+            try:
+                with tarfile.open(fileobj=io.BytesIO(blob[start:])) as tf:
+                    return tf.getnames()
+            except Exception:
+                pass
+
+        pos = i + 1
+
+
 def package_names(path):
-    """返回包内所有路径（以 / 开头）。"""
     try:
         data = open(path, 'rb').read()
     except OSError as e:
         print('cannot read %s: %s' % (path, e))
-        return None
+        return None, 'unknown'
 
-    for blob in gzip_members(data):
-        names = tar_names(blob)
+    blob, kind = decompress(data)
 
-        if names:
-            return ['/' + n.lstrip('./') for n in names]
+    if blob is None:
+        print('cannot decompress %s (magic %s, %d bytes)'
+              % (path, data[:4].hex(), len(data)))
+        return None, kind
 
-    return None
+    names = tar_names(blob)
+
+    if names is None:
+        print('no tar archive found inside %s (decompressed %d bytes, %s)'
+              % (path, len(blob), kind))
+        return None, kind
+
+    return ['/' + n.lstrip('./') for n in names], kind
 
 
 def main(argv):
@@ -86,8 +143,7 @@ def main(argv):
     for arg in (patterns or ['*.apk']):
         files += sorted(glob.glob(arg, recursive=True)) or [arg]
 
-    listed = set()
-    rc = 0
+    listed, rc = set(), 0
 
     for path in files:
         if not os.path.exists(path):
@@ -95,14 +151,13 @@ def main(argv):
             rc = 1
             continue
 
-        names = package_names(path)
+        names, kind = package_names(path)
 
         if names is None:
-            print('== %s (no tar member found)' % path)
             rc = 1
             continue
 
-        print('== %s (%d entries)' % (path, len(names)))
+        print('== %s (%d entries, %s)' % (path, len(names), kind))
 
         for n in sorted(names):
             print('   %s' % n)
@@ -112,14 +167,14 @@ def main(argv):
     if expects:
         missing = [e for e in expects if e not in listed]
 
+        print()
+
         if missing:
-            print()
             print('MISSING in package:')
             for m in missing:
                 print('   %s' % m)
             rc = 1
         else:
-            print()
             print('all %d expected path(s) present' % len(expects))
 
     return rc
