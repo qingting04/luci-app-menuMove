@@ -221,12 +221,27 @@ return view.extend({
 				o1.value(sec.from, '%s (%s)'.format(sec.from, _('not found')));
 		});
 
+		/* Target section: only the top level groups (Services, Network, ...).
+		 * The moved tab keeps its own name, so the category is all we need. */
 		var o2 = s.option(form.ListValue, 'to', _('Target section'));
 		o2.rmempty = false;
 		o2.modalonly = true;
 		o2.value('', _('-- please choose --'));
+
+		var categories = {};
+
 		entries.forEach(function(e) {
+			if (e.path.split('/').length != 2)
+				return;
+
+			categories[e.path] = true;
 			o2.value(e.path, '%s [%s]'.format(_(e.title), e.path));
+		});
+
+		/* keep categories already referenced by an existing rule selectable */
+		uci.sections('menu-move', 'move').forEach(function(sec) {
+			if (sec.to && !categories[sec.to])
+				o2.value(sec.to, sec.to);
 		});
 
 		var o3 = s.option(form.Value, 'order', _('Order'));
@@ -245,6 +260,19 @@ return view.extend({
 		var o6 = s.option(form.Flag, 'enabled', _('Enabled'));
 		o6.default = '1';
 		o6.modalonly = true;
+
+		/* Read-only grid column. All editable options above are modalonly
+		 * (= modal dialog only), so without this the table row would render no
+		 * cell at all. DummyValue is a non-modalonly child, so it shows up in
+		 * the row while the modal keeps the real input fields. */
+		var p1 = s.option(form.DummyValue, '_preview', '');
+		p1.modalonly = false;
+		p1.cfgvalue = function(sid) {
+			var from = uci.get('menu-move', sid, 'from') || '';
+			var to = uci.get('menu-move', sid, 'to') || '';
+
+			return from ? '%s  \u2192  %s'.format(from, to || '?') : '-';
+		};
 
 		return m.render().then(function(mapNode) {
 			var blocks = [];
