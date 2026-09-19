@@ -78,9 +78,6 @@ msgstr "要移动的标签"
 msgid "-- please choose --"
 msgstr "-- 请选择 --"
 
-msgid "not found"
-msgstr "未找到"
-
 msgid "Target section"
 msgstr "目标分区"
 

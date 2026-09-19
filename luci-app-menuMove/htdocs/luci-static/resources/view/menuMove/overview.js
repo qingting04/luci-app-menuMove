@@ -215,12 +215,6 @@ return view.extend({
 			o1.value(e.path, '%s [%s]'.format(_(e.title), e.path));
 		});
 
-		/* keep entries that disappeared (e.g. app uninstalled) selectable */
-		uci.sections('menu-move', 'move').forEach(function(sec) {
-			if (sec.from && !known[sec.from])
-				o1.value(sec.from, '%s (%s)'.format(sec.from, _('not found')));
-		});
-
 		/* Target section: only the top level groups (Services, Network, ...).
 		 * The moved tab keeps its own name, so the category is all we need. */
 		var o2 = s.option(form.ListValue, 'to', _('Target section'));

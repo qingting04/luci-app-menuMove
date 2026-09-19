@@ -78,9 +78,6 @@ msgstr ""
 msgid "-- please choose --"
 msgstr ""
 
-msgid "not found"
-msgstr ""
-
 msgid "Target section"
 msgstr ""
 
