@@ -258,8 +258,4 @@ logread -e menu-move; logread -e rpcd        # 触发器/加载报错
 
 Apache-2.0（与 LuCI 一致）。
 
-**ucode 模块导出写法（踩过的坑）**：本插件的 `menuMove.uc` 只用 `export function` 导出，
-常量保持私有、通过 `menu_paths()` 返回。原因是设备上的 ucode（2026.01）**不支持 `export const`**
-——它会报 `Unexpected token / Expecting ';'`，而且错误会连环报在后面几个语句边界上
-（117/158/214…），非常难定位；顶层 `return { ... }` 也不行（`return must be inside function body`）。
-`test/check.py` 第 9 节会守住这条规则。
+**ucode 模块导出写法（踩过的坑，r8 定案）**：设备上的 ucode（2026.01）**要求每个 `export` 声明以 `;` 收尾**，即 `export function f() { ... };`。少了这个分号会报 `Unexpected token / Expecting ';'`，而且解析器错位后会把错误报到后面几个语句边界上（117/158/214…），极难定位。官方 `/usr/share/ucode/luci/sys.uc` 的 6 个 export **全部**以 `};` 收尾（`grep -c "^};"` 得 6）。新版 ucode 里这个分号可选，所以本地编译不报错、只有设备报。`test/check.py` 第 9 节逐个校验 export 声明的收尾。

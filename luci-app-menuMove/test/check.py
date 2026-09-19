@@ -332,28 +332,34 @@ if noexec:
 else:
     ok('%d 个脚本都有执行位' % len(NEED_X))
 
-# --- 9. 导出写法（设备 ucode 只支持 export function） ------------------------
+# --- 9. 导出写法（设备 ucode 要求 export 声明以 ; 收尾） -------------------
 section('9. ucode 模块导出写法（老固件兼容）')
 
-NEW_MODERN = [
-    (re.compile(r'(?m)^[ \t]*export[ \t]+(const|let|var)[ \t]'), 'export const/let/var'),
-    (re.compile(r'(?m)^[ \t]*module\.exports\b'), 'module.exports'),
-    (re.compile(r'(?m)^[ \t]*export[ \t]*\{'), 'export { ... }'),
-]
-
-found = []
+bad_exports = []
 
 for path in ucode_files:
-    code = strip_comments(read(path))
+    src = strip_comments(read(path))
+    lines = src.split('\n')
 
-    for rx, name in NEW_MODERN:
-        if rx.search(code):
-            found.append('%s 里出现 %s' % (os.path.relpath(path, PKG), name))
+    for idx, ln in enumerate(lines):
+        if not re.match(r'^export (function|const|let|var) ', ln):
+            continue
 
-if found:
-    bad('设备 ucode 的 export 只支持函数声明（%r）：常量请用 menu_paths() 导出' % found)
+        # 找这个声明的收尾行：顶格的 } 或 };
+        for nxt in lines[idx + 1:]:
+            if nxt in ('}', '};'):
+                if nxt != '};':
+                    bad_exports.append('%s 第 %d 行的 export 声明没有以 ; 收尾'
+                                       % (os.path.relpath(path, PKG), idx + 1))
+                break
+        else:
+            bad_exports.append('%s 第 %d 行的 export 声明找不到收尾' % (os.path.relpath(path, PKG), idx + 1))
+
+if bad_exports:
+    bad('export 声明必须以 ; 结尾（设备 ucode 报 Unexpected token / Expecting \';\'）：\n     %s'
+        % '\n     '.join(bad_exports))
 else:
-    ok('%d 个 ucode 文件只用 export function 导出' % len(ucode_files))
+    ok('ucode 导出声明全部以 }; 收尾')
 
 # --- summary ---------------------------------------------------------------
 print()

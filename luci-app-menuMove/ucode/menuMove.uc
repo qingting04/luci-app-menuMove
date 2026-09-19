@@ -111,7 +111,7 @@ export function clone(src) {
 	default:
 		return src;
 	}
-}
+};
 
 /* Merge an array of parsed menu.d documents the very same way the dispatcher does. */
 export function merge_specs(docs) {
@@ -140,7 +140,7 @@ export function merge_specs(docs) {
 	}
 
 	return specs;
-}
+};
 
 /* "admin/nas/nfs/" -> "admin/nas/nfs", invalid -> null */
 export function norm_path(p) {
@@ -153,13 +153,13 @@ export function norm_path(p) {
 		return null;
 
 	return s;
-}
+};
 
 export function last_segment(p) {
 	let segs = split(p, '/');
 
 	return segs[length(segs) - 1];
-}
+};
 
 function to_int(v) {
 	if (type(v) == 'int')
@@ -209,7 +209,7 @@ export function read_specs(o) {
 	}
 
 	return { specs: merge_specs(docs), sources };
-}
+};
 
 export function read_rules(o) {
 	let opts = defaults(o), c = cursor(), rules = [], enabled = true;
@@ -231,7 +231,7 @@ export function read_rules(o) {
 	});
 
 	return { enabled: enabled, rules: rules };
-}
+};
 
 /*
  * Pure planner: no file system access, so it can be tested in isolation.
@@ -352,7 +352,7 @@ export function build_plan(specs, rules, marker) {
 	}
 
 	return { overrides: out, errors: errors, applied: applied };
-}
+};
 
 export function render_overrides(overrides) {
 	let sorted = {};
@@ -361,7 +361,7 @@ export function render_overrides(overrides) {
 		sorted[path] = overrides[path];
 
 	return sprintf('%.J\n', sorted);
-}
+};
 
 /*
  * 原子写：先写同目录的 .tmp 再 rename。LuCI 每次请求都可能并发读这个文件，
@@ -444,7 +444,7 @@ export function lua_conflicts(o, rules) {
 	}
 
 	return uniq(warnings);
-}
+};
 
 export function status(o) {
 	let opts = defaults(o);
@@ -484,7 +484,7 @@ export function status(o) {
 		marker: opts.marker,
 		marker_present: !!stat(opts.marker)
 	};
-}
+};
 
 export function apply(o) {
 	let opts = defaults(o);
@@ -549,7 +549,7 @@ export function apply(o) {
 	}
 
 	return res;
-}
+};
 
 /* 常量导出：设备上的 ucode 只支持 `export function`，不支持 `export const`
  * （`export const` 会报 Unexpected token / Expecting ';'，见 test/check.py 第 9 节）。
@@ -562,4 +562,4 @@ export function menu_paths() {
 		config: CONFIG,
 		lua_dir: LUA_DIR
 	};
-}
+};
