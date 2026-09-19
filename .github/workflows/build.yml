@@ -22,9 +22,25 @@ jobs:
       - name: Install zstd
         run: sudo apt-get update && sudo apt-get install -y zstd
 
-      - name: Download ImmortalWrt SDK
+      - name: Cache SDK tarball
+        uses: actions/cache@v4
+        with:
+          path: sdk.tar.zst
+          key: sdk-${{ env.SDK_VERSION }}-${{ env.TARGET }}-${{ env.SUBTARGET }}
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ccache
+            immortalwrt-sdk-*/.ccache
+          key: ccache-${{ env.SDK_VERSION }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ env.SDK_VERSION }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-
+
+            - name: Download ImmortalWrt SDK
         run: |
-          wget -q -O sdk.tar.zst \
+          test -s sdk.tar.zst || wget -q -O sdk.tar.zst \
             "https://downloads.immortalwrt.org/releases/${SDK_VERSION}/targets/${TARGET}/${SUBTARGET}/immortalwrt-sdk-${SDK_VERSION}-${TARGET}-${SUBTARGET}_gcc-${GCC}_musl.Linux-x86_64.tar.zst"
           tar --zstd -xf sdk.tar.zst
 
@@ -45,6 +61,7 @@ jobs:
           cd immortalwrt-sdk-*/
           sed -i 's/^# CONFIG_LUCI_LANG_zh_Hans is not set/CONFIG_LUCI_LANG_zh_Hans=y/' .config
           grep -q '^CONFIG_LUCI_LANG_zh_Hans=y' .config || echo 'CONFIG_LUCI_LANG_zh_Hans=y' >> .config
+          echo 'CONFIG_CCACHE=y' >> .config
           make defconfig
 
       - name: Sanity checks
@@ -54,7 +71,7 @@ jobs:
       - name: Build
         run: |
           cd immortalwrt-sdk-*/
-          make package/${PACKAGE_DIR}/compile V=s -j$(nproc)
+          make package/${PACKAGE_DIR}/compile -j$(nproc)
 
       - name: Show built packages and their contents
         if: always()
