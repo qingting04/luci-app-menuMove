@@ -14,17 +14,17 @@
 
 import * as mm from 'luci.menu-move';
 
-const usage = `Usage: menu-move <command>
+/* 不用模板字符串：老固件上的 ucode 未必支持，统一用拼接 */
+const usage = 'Usage: menu-move <command>\n' +
+	'\n' +
+	'Commands:\n' +
+	'  status    show configuration and generated file state\n' +
+	sprintf('  apply     regenerate %s/%s\n', mm.MENU_DIR, mm.GEN_NAME) +
+	'  check     dry run - report errors and planned moves without writing\n' +
+	'  paths     list all available menu entry paths\n' +
+	'  json      dump state + plan as JSON\n';
 
-Commands:
-  status    show configuration and generated file state
-  apply     regenerate ${mm.MENU_DIR}/${mm.GEN_NAME}
-  check     dry run - report errors and planned moves without writing
-  paths     list all available menu entry paths
-  json      dump state + plan as JSON
-`;
-
-const cmd = ARGV[0] ?? 'status';
+const cmd = (ARGV[0] != null) ? ARGV[0] : 'status';
 
 function human_move(m) {
 	return sprintf('  %s -> %s%s%s', m.from, m.path,
@@ -34,8 +34,8 @@ function human_move(m) {
 
 function print_errors(list, indent) {
 	for (let e in list)
-		printf('%s%s%s\n', indent ?? '  ',
-			length(e.from) ? sprintf('%s -> %s: ', e.from, e.to) : '', e.error ?? e);
+		printf('%s%s%s\n', (indent != null) ? indent : '  ',
+			length(e.from) ? sprintf('%s -> %s: ', e.from, e.to) : '', (e.error != null) ? e.error : e);
 }
 
 switch (cmd) {
@@ -104,8 +104,8 @@ case 'paths':
 	for (let path in sort(keys(s.specs))) {
 		let spec = s.specs[path];
 
-		printf('%-40s %-24s %s\n', path, spec.title ?? '',
-			spec.action?.type ?? '-');
+		printf('%-40s %-24s %s\n', path, (spec.title != null) ? spec.title : '',
+			(spec.action && spec.action.type) ? spec.action.type : '-');
 	}
 
 	exit(0);

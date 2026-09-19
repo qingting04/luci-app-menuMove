@@ -271,6 +271,43 @@ if proc.returncode == 0:
 else:
     bad('init 脚本语法错误：%s' % proc.stderr.strip())
 
+# --- 7. ucode 语法保守性 ----------------------------------------------------
+section('7. ucode 语法保守性（老固件兼容）')
+
+NO_MODERN = [
+    (re.compile(r'\?\?'), '?? / ??='),
+    (re.compile(r'\?\.'), '?.'),
+    (re.compile(r'`'), '模板字符串'),
+    (re.compile(r'for \(let \w+,\s*\w+ in'), '多变量 for-in'),
+]
+
+
+def strip_comments(src):
+    return re.sub(r'//[^\n]*', '', re.sub(r'/\*.*?\*/', '', src, flags=re.S))
+
+
+ucode_files = [
+    os.path.join(PKG, 'ucode/menu-move.uc'),
+    os.path.join(PKG, 'root/usr/bin/menu-move'),
+]
+
+for root, _dirs, files in os.walk(os.path.join(PKG, 'root/usr/share/rpcd/ucode')):
+    ucode_files += [os.path.join(root, f) for f in files if not f.startswith('.')]
+
+found = []
+
+for path in ucode_files:
+    code = strip_comments(read(path))
+
+    for rx, name in NO_MODERN:
+        if rx.search(code):
+            found.append('%s 里出现 %s' % (os.path.relpath(path, PKG), name))
+
+if found:
+    bad('老固件不支持的 ucode 语法：%r（路由器上会报 Expecting \';\' 之类的语法错）' % found)
+else:
+    ok('%d 个 ucode 文件只用保守语法（无空值合并/可选链/模板字符串/多变量 for-in）' % len(ucode_files))
+
 # --- summary ---------------------------------------------------------------
 print()
 if FAILURES:

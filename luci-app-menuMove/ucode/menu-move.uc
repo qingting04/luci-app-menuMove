@@ -65,6 +65,16 @@ const schema = {
  * fixture directory on a development machine - it is never set by the
  * package itself and no user input flows into it.
  */
+/*
+ * 老固件上的 ucode 不支持空值合并运算符（两个问号）和可选链（问号加点）：
+ * 实测路由器上的解析器会把它当成两个问号，之后一路报 "Expecting ';'"。
+ * 所以这里统一用最保守的写法：「只在 null/undefined 时取默认值」用 nvl()。
+ * 同理不用 ucode 特有的多变量 for-in（for (let k, v in obj)）和模板字符串。
+ */
+function nvl(v, d) {
+	return (v == null) ? d : v;
+}
+
 function env_path(name, fallback) {
 	let v = getenv(name);
 
@@ -72,16 +82,16 @@ function env_path(name, fallback) {
 }
 
 function defaults(o) {
-	o ??= {};
+	o = nvl(o, {});
 
 	return {
-		menu_dir: o.menu_dir ?? env_path('MENU_MOVE_MENU_DIR', MENU_DIR),
-		gen_name: o.gen_name ?? GEN_NAME,
-		gen_path: o.gen_path ?? env_path('MENU_MOVE_GEN_PATH',
-			sprintf('%s/%s', env_path('MENU_MOVE_MENU_DIR', MENU_DIR), GEN_NAME)),
-		marker: o.marker ?? env_path('MENU_MOVE_MARKER', MARKER),
-		config: o.config ?? env_path('MENU_MOVE_CONFIG', CONFIG),
-		lua_dir: o.lua_dir ?? env_path('MENU_MOVE_LUA_DIR', LUA_DIR)
+		menu_dir: nvl(o.menu_dir, env_path('MENU_MOVE_MENU_DIR', MENU_DIR)),
+		gen_name: nvl(o.gen_name, GEN_NAME),
+		gen_path: nvl(o.gen_path, env_path('MENU_MOVE_GEN_PATH',
+			sprintf('%s/%s', env_path('MENU_MOVE_MENU_DIR', MENU_DIR), GEN_NAME))),
+		marker: nvl(o.marker, env_path('MENU_MOVE_MARKER', MARKER)),
+		config: nvl(o.config, env_path('MENU_MOVE_CONFIG', CONFIG)),
+		lua_dir: nvl(o.lua_dir, env_path('MENU_MOVE_LUA_DIR', LUA_DIR))
 	};
 }
 
@@ -93,8 +103,8 @@ export function clone(src) {
 	case 'object':
 		let dest = {};
 
-		for (let k, v in src)
-			dest[k] = clone(v);
+		for (let k in src)
+			dest[k] = clone(src[k]);
 
 		return dest;
 
@@ -111,16 +121,21 @@ export function merge_specs(docs) {
 		if (type(doc) != 'object')
 			continue;
 
-		for (let path, spec in doc) {
+		for (let path in doc) {
+			let spec = doc[path];
+
 			if (type(spec) != 'object')
 				continue;
 
 			if (!exists(specs, path))
 				specs[path] = {};
 
-			for (let k, t in schema)
+			for (let k in schema) {
+				let t = schema[k];
+
 				if (type(spec[k]) == t)
 					specs[path][k] = clone(spec[k]);
+			}
 		}
 	}
 
@@ -188,7 +203,8 @@ export function read_specs(o) {
 			push(docs, doc);
 
 			for (let path in doc)
-				sources[path] ??= name;
+				if (sources[path] == null)
+					sources[path] = name;
 		}
 	}
 
@@ -199,18 +215,18 @@ export function read_rules(o) {
 	let opts = defaults(o), c = cursor(), rules = [], enabled = true;
 
 	c.load(opts.config);
-	enabled = (c.get(opts.config, 'settings', 'enabled') ?? '1') != '0';
+	enabled = nvl(c.get(opts.config, 'settings', 'enabled'), '1') != '0';
 
 	c.foreach(opts.config, 'move', (s) => {
-		if ((s.enabled ?? '1') == '0')
+		if (nvl(s.enabled, '1') == '0')
 			return;
 
 		push(rules, {
-			from: trim(s.from ?? ''),
-			to: trim(s.to ?? ''),
-			title: trim(s.title ?? ''),
+			from: trim(nvl(s.from, '')),
+			to: trim(nvl(s.to, '')),
+			title: trim(nvl(s.title, '')),
 			order: to_int(s.order),
-			hide_original: (s.hide_original ?? '1') != '0'
+			hide_original: nvl(s.hide_original, '1') != '0'
 		});
 	});
 
@@ -284,7 +300,9 @@ export function build_plan(specs, rules, marker) {
 
 		let moved = [], failed = false;
 
-		for (let path, spec in specs) {
+		for (let path in specs) {
+			let spec = specs[path];
+
 			if (path != from && !is_subpath(path, from))
 				continue;
 
@@ -317,7 +335,8 @@ export function build_plan(specs, rules, marker) {
 		if (is_true(rule.hide_original)) {
 			let hidden = clone(specs[from]);
 
-			hidden.depends ??= {};
+			if (hidden.depends == null)
+				hidden.depends = {};
 
 			let guard = {};
 			guard[marker] = 'file';
@@ -414,7 +433,7 @@ export function lua_conflicts(o, rules) {
 
 			for (let rule in rules) {
 				let from = norm_path(rule.from);
-				let path = from ?? rule.from;
+				let path = nvl(from, rule.from);
 				let last = last_segment(path);
 
 				if (match(src, regexp('"' + path + '"', 'g')) ||
@@ -460,7 +479,7 @@ export function status(o) {
 		rules: length(rl.rules),
 		generated: opts.gen_path,
 		exists: !!st,
-		mtime: st?.mtime ?? null,
+		mtime: st ? st.mtime : null,
 		stale: (current != expected),
 		marker: opts.marker,
 		marker_present: !!stat(opts.marker)

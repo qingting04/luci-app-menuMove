@@ -87,7 +87,7 @@ env:
 Actions → 最近一次运行 → **Summary** → 下载 `luci-app-menuMove` artifact，解压得到：
 
 ```
-luci-app-menuMove_1.0.0-3_all.apk           # 主包
+luci-app-menuMove_1.0.0-4_all.apk           # 主包
 luci-i18n-menuMove-zh-cn_*.apk              # 中文翻译包（workflow 里已打开 LUCI_LANG_zh_Hans）
 ```
 
@@ -229,6 +229,7 @@ fork 后如需修改 workflow 顶部的 4 个变量（纯 LuCI 插件其实不�
 - **包名 / LuCI 侧标识是小驼峰**：`luci-app-menuMove`、菜单路径 `admin/services/menuMove`、视图 `menuMove/overview`、权限组 `luci-app-menuMove`；
   但 **UCI config 名、ubus 对象名、init.d 脚本名、命令行名保持 kebab-case**：`menu-move` / `menu_move`（OpenWrt 系统机制约定）。
 - **LuCI 版本**：JS 框架需 LuCI 23.05+，ImmortalWrt 23.05 / 24.10 / 25.x 均支持。
+- **ucode 语法保持保守**：模块与 CLI 只用老固件都支持的写法 —— 不用空值合并（两个问号）、可选链、模板字符串，也不用 ucode 特有的多变量 for-in。路由器上曾因为用了这些写法而编译不过，报的是一串 `Expecting ';'` 语法错（当时界面上只能看到「无法访问插件」，非常难查）。`test/check.py` 第 7 节会静态检查这一条，CI 里会跑。
 - **为什么网页界面不直接用 ubus 插件**：`fs.exec('/usr/bin/menu-move', [...])` 走的是系统自带的 `file` 对象，只要 rpcd 在就能用；而且能把命令的 stderr 原样显示出来。`menu_move` ubus 对象仍然保留，供脚本/其它服务调用（`ubus call menu_move status|apply`）。
 - **CI 每次都会打印包内文件清单**，装完可以对着确认 `menu-move.uc` 落在 `/usr/share/ucode/luci/` 下。
 - 改包名只需改目录名 + `PKG_NAME`；`luci.mk` 用目录名推导 `LUCI_BASENAME`（这里是 `menuMove`），所以翻译包叫 `luci-i18n-menuMove-zh-cn`。
