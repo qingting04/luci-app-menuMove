@@ -308,6 +308,30 @@ if found:
 else:
     ok('%d 个 ucode 文件只用保守语法（无空值合并/可选链/模板字符串/多变量 for-in）' % len(ucode_files))
 
+# --- 8. 必须可执行的文件 ----------------------------------------------------
+section('8. 可执行位（init.d / uci-defaults / CLI）')
+
+NEED_X = [
+    'root/etc/init.d/menu-move',
+    'root/etc/uci-defaults/90-luci-app-menuMove',
+    'root/usr/bin/menu-move',
+]
+
+noexec = []
+
+for rel in NEED_X:
+    path = os.path.join(PKG, rel)
+
+    if not os.path.exists(path):
+        noexec.append('%s 不存在' % rel)
+    elif not (os.stat(path).st_mode & 0o111):
+        noexec.append('%s 没有执行位（装到路由器上会 Permission denied）' % rel)
+
+if noexec:
+    bad('; '.join(noexec))
+else:
+    ok('%d 个脚本都有执行位' % len(NEED_X))
+
 # --- summary ---------------------------------------------------------------
 print()
 if FAILURES:

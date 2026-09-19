@@ -87,17 +87,17 @@ env:
 Actions → 最近一次运行 → **Summary** → 下载 `luci-app-menuMove` artifact，解压得到：
 
 ```
-luci-app-menuMove_1.0.0-4_all.apk           # 主包
-luci-i18n-menuMove-zh-cn_*.apk              # 中文翻译包（workflow 里已打开 LUCI_LANG_zh_Hans）
+luci-app-menuMove-1.0.0-r5.apk           # 主包
+luci-i18n-menuMove-zh-cn-1.0.0-r5.apk              # 中文翻译包（workflow 里已打开 LUCI_LANG_zh_Hans）
 ```
 
 ### 5. 装到路由器
 
 ```sh
-scp luci-app-menuMove_*.apk luci-i18n-menuMove-zh-cn_*.apk root@192.168.1.1:/tmp/
+scp luci-app-menuMove_*.apk luci-i18n-menuMove-zh-cn-1.0.0-r5.apk root@192.168.1.1:/tmp/
 ssh root@192.168.1.1
 apk add --allow-untrusted /tmp/luci-app-menuMove_*.apk
-apk add --allow-untrusted /tmp/luci-i18n-menuMove-zh-cn_*.apk
+apk add --allow-untrusted /tmp/luci-i18n-menuMove-zh-cn-1.0.0-r5.apk
 ```
 
 > `--allow-untrusted` 是因为本地/CI 编译的包没有官方签名。

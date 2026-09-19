@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-List the files contained in OpenWrt .apk / .ipk packages.
+列出 OpenWrt .apk / .ipk 包里的文件，并可断言某些路径必须存在（CI 用）。
 
-    python3 test/apk_info.py 'bin/packages/**/*.apk'
+    # 只看内容
+    python3 test/apk_info.py 'bin/packages/**/luci-app-menuMove*.apk'
 
-Used by CI so the build log shows exactly which paths a package installs -
-the fastest way to spot a wrong install location (e.g. an ucode module that
-did not end up in /usr/share/ucode/luci/).
+    # 断言必须包含这些路径，缺任何一个退出码非 0（CI 里作为硬门槛）
+    python3 test/apk_info.py --expect /usr/bin/menu-move \
+                             --expect /etc/init.d/menu-move \
+                             'bin/packages/**/luci-app-menuMove*.apk'
 
-OpenWrt .apk files (apk v3) are a concatenation of gzip members - the metadata
-and the data tarball - so plain "tar tzf" does not work; split the gzip stream
-and unpack whichever member is a tarball.
+为什么要写这个：apk v3 是多段 gzip 拼接（元数据 + data.tar.gz），`tar tzf` 读不出来；
+而且「包里的文件装到哪」曾经出过问题（模块没进包），所以 CI 每次都必须打印并核对
+真实路径，而不是相信 luci.mk 的推导。
 """
 
 import glob
@@ -22,7 +24,7 @@ import zlib
 
 
 def gzip_members(data):
-    """Split a concatenated gzip stream into the decompressed members."""
+    """把拼接的 gzip 流拆成各段。"""
     parts, off = [], 0
 
     while off < len(data):
@@ -50,43 +52,75 @@ def tar_names(blob):
         return None
 
 
-def list_package(path):
+def package_names(path):
+    """返回包内所有路径（以 / 开头）。"""
     try:
         data = open(path, 'rb').read()
     except OSError as e:
         print('cannot read %s: %s' % (path, e))
-        return False
+        return None
 
     for blob in gzip_members(data):
         names = tar_names(blob)
 
         if names:
-            print('== %s (%d entries)' % (path, len(names)))
+            return ['/' + n.lstrip('./') for n in names]
 
-            for n in sorted(names):
-                print('   /%s' % n.lstrip('./'))
-
-            return True
-
-    print('== %s (no tar member found)' % path)
-    return False
+    return None
 
 
 def main(argv):
+    expects, patterns = [], []
+
+    i = 0
+    while i < len(argv):
+        if argv[i] == '--expect' and i + 1 < len(argv):
+            expects.append(argv[i + 1])
+            i += 2
+        else:
+            patterns.append(argv[i])
+            i += 1
+
     files = []
 
-    for arg in (argv or ['*.apk']):
+    for arg in (patterns or ['*.apk']):
         files += sorted(glob.glob(arg, recursive=True)) or [arg]
 
+    listed = set()
     rc = 0
 
     for path in files:
-        if os.path.exists(path):
-            if not list_package(path):
-                rc = 1
-        else:
-            print('missing: %s' % path)
+        if not os.path.exists(path):
+            print('missing package: %s' % path)
             rc = 1
+            continue
+
+        names = package_names(path)
+
+        if names is None:
+            print('== %s (no tar member found)' % path)
+            rc = 1
+            continue
+
+        print('== %s (%d entries)' % (path, len(names)))
+
+        for n in sorted(names):
+            print('   %s' % n)
+
+        listed |= set(names)
+
+    if expects:
+        missing = [e for e in expects if e not in listed]
+
+        if missing:
+            print()
+            print('MISSING in package:')
+            for m in missing:
+                print('   %s' % m)
+            rc = 1
+        else:
+            print()
+            print('all %d expected path(s) present' % len(expects))
 
     return rc
 
