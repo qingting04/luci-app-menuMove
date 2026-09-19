@@ -6,14 +6,14 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-menuMove
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=13
+PKG_RELEASE:=14
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=qingting04
 
 LUCI_TITLE:=LuCI menu tab organizer
 LUCI_DESCRIPTION:=Move LuCI menu tabs (entries) of the web interface to another section, \
 for example move everything below "NAS" into "Services".
-LUCI_DEPENDS:=+luci-base +rpcd-mod-file +rpcd-mod-ucode +ucode-mod-fs +ucode-mod-uci +procd
+LUCI_DEPENDS:=+luci-base +rpcd-mod-file +ucode-mod-fs +ucode-mod-uci +procd
 LUCI_PKGARCH:=all
 
 define Package/$(PKG_NAME)/conffiles

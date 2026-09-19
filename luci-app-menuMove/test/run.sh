@@ -64,8 +64,6 @@ echo "== rpcd plugin =="
 # value as the ubus method signature - run it exactly that way.
 "$UCODE" -R -L "$WORK/mods" "$PKG/root/usr/share/rpcd/ucode/luci.menuMove" \
 	&& echo "ok    plugin loads in rpcd raw mode"
-grep -q "menu_move:" "$PKG/root/usr/share/rpcd/ucode/luci.menuMove" \
-	&& echo "ok    ubus object menu_move is declared"
 
 echo
 echo "== 部署路径一致性（防止再出现「导入名 ≠ 安装路径」这类问题）=="

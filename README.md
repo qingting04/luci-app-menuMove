@@ -179,9 +179,8 @@ uci commit menu-move
 │   │   ├── etc/init.d/menu-move             #   procd 触发器：配置一改就重新生成
 │   │   ├── etc/uci-defaults/90-luci-app-menuMove   # 安装后立即生成一次
 │   │   ├── usr/bin/menu-move                #   命令行工具（网页界面也调它）
-│   │   ├── usr/share/rpcd/ucode/luci.menuMove   # ubus 对象 menu_move（可选 API，界面不依赖它）
 │   │   ├── usr/share/luci/menu.d/luci-app-menuMove.json   # 本插件自己的菜单入口
-│   │   └── usr/share/rpcd/acl.d/luci-app-menuMove.json    # 权限声明（uci + file exec + ubus）
+│   │   └── usr/share/rpcd/acl.d/luci-app-menuMove.json    # 权限声明（uci + file exec）
 │   └── test/                                # 本地测试（不需要路由器）
 │       ├── run.sh  test.uc                  #   60 项单元检查 + CLI/插件冒烟
 │       ├── simulate_menu.py                 #   复刻 LuCI 服务端+前端菜单算法做仿真验证（12 项）
@@ -222,15 +221,15 @@ fork 后如需修改 workflow 顶部的 4 个变量（纯 LuCI 插件其实不�
 3. **新装/卸载插件后菜单变了**：界面「状态」区会立刻提示「生成的文件已过期」（按内容比对，与文件时间戳无关），点一下「立即重新生成」即可；`menu-move status` 的 `stale` 同理。
 4. **`/usr/share` 不在 sysupgrade 备份里**，重启/升级后覆盖文件由 init 脚本自动重建（规则在 `/etc/config/menu-move`，会保留）。
 5. 只能把标签挂到**已存在的菜单路径**下，目标不存在会被拒绝（凭空造出的分区没有标题，前端根本不显示）。
-6. 需要 `luci-base`、`rpcd-mod-file`、`rpcd-mod-ucode`、`ucode-mod-fs`、`ucode-mod-uci`（装 LuCI 时通常已有，包依赖里已声明）。`rpcd-mod-file` 是网页界面调用命令行的通道，`rpcd-mod-ucode` 只有可选的 ubus 对象用得到。
+6. 需要 `luci-base`、`rpcd-mod-file`、`ucode-mod-fs`、`ucode-mod-uci`（装 LuCI 时通常已有，包依赖里已声明）。`rpcd-mod-file` 是网页界面调用命令行的通道。
 
 ## 说明
 
 - **包名 / LuCI 侧标识是小驼峰**：`luci-app-menuMove`、菜单路径 `admin/services/menuMove`、视图 `menuMove/overview`、权限组 `luci-app-menuMove`；
-  但 **UCI config 名、ubus 对象名、init.d 脚本名、命令行名保持 kebab-case**：`menu-move` / `menu_move`（OpenWrt 系统机制约定）。
+  但 **UCI config 名、init.d 脚本名、命令行名保持 kebab-case**：`menu-move` / `menu_move`（OpenWrt 系统机制约定）。
 - **LuCI 版本**：JS 框架需 LuCI 23.05+，ImmortalWrt 23.05 / 24.10 / 25.x 均支持。
 - **ucode 语法保持保守**：模块与 CLI 只用老固件都支持的写法 —— 不用空值合并（两个问号）、可选链、模板字符串，也不用 ucode 特有的多变量 for-in。路由器上曾因为用了这些写法而编译不过，报的是一串 `Expecting ';'` 语法错（当时界面上只能看到「无法访问插件」，非常难查）。`test/check.py` 第 7 节会静态检查这一条，CI 里会跑。
-- **为什么网页界面不直接用 ubus 插件**：`fs.exec('/usr/bin/menu-move', [...])` 走的是系统自带的 `file` 对象，只要 rpcd 在就能用；而且能把命令的 stderr 原样显示出来。`menu_move` ubus 对象仍然保留，供脚本/其它服务调用（`ubus call menu_move status|apply`）。
+- **为什么网页界面不直接用 ubus 插件**：`fs.exec('/usr/bin/menu-move', [...])` 走的是系统自带的 `file` 对象，只要 rpcd 在就能用；而且能把命令的 stderr 原样显示出来。
 - **CI 每次都会打印包内文件清单**，装完可以对着确认 `menuMove.uc` 落在 `/usr/share/ucode/luci/` 下。
 - 改包名只需改目录名 + `PKG_NAME`；`luci.mk` 用目录名推导 `LUCI_BASENAME`（这里是 `menuMove`），所以翻译包叫 `luci-i18n-menuMove-zh-cn`。
 
@@ -241,7 +240,6 @@ fork 后如需修改 workflow 顶部的 4 个变量（纯 LuCI 插件其实不�
 ```sh
 /usr/bin/menu-move status                    # 命令行能不能跑（报错原文就是根因）
 ls -l /usr/share/ucode/luci/menuMove.uc /usr/share/rpcd/ucode/  # 文件是否就位
-ubus list | grep menu_move                   # 可选的 ubus 对象是否注册
 logread -e menu-move; logread -e rpcd        # 触发器/加载报错
 ```
 

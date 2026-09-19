@@ -184,29 +184,6 @@ if os.path.isdir(os.path.join(PKG, 'ucode')) and re.search(
 else:
     bad('CLI 必须用 luci.menuMove 导入模块')
 
-# --- 4. rpcd plugin / ubus object ------------------------------------------
-section('4. rpcd 插件与 ubus 对象')
-
-plugin_src = read(PLUGIN)
-obj = re.search(r'return\s*\{\s*(\w+)\s*:\s*\{', plugin_src)
-if not obj:
-    bad('rpcd 插件没有顶层 return { <object>: {...} }（rpcd 用这个表当 ubus 签名）')
-else:
-    name = obj.group(1)
-    ok('插件声明的 ubus 对象：%s' % name)
-
-    for meth in ('status', 'apply'):
-        if re.search(r'\b%s\s*:\s*\{' % meth, plugin_src):
-            ok('插件实现了方法 %s' % meth)
-        else:
-            bad('插件缺少方法 %s' % meth)
-
-        granted = name in acl_text and '"%s"' % meth in acl_text
-        if granted:
-            ok('ACL 授权了 %s/%s' % (name, meth))
-        else:
-            bad('ACL 没有授权 %s/%s' % (name, meth))
-
 # --- 5. UCI factory defaults vs view defaults -------------------------------
 section('5. 出厂默认值与视图默认值')
 

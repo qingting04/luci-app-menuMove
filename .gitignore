@@ -1,8 +1,8 @@
 # 测试临时目录（test/run.sh 生成）
 luci-app-menuMove/test/work/
-
 # 编译产物
 *.apk
 *.ipk
 *.o
 *.tar.zst
+.codegraph/

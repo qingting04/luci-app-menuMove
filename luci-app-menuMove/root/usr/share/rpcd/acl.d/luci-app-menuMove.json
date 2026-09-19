@@ -1,25 +1,35 @@
 {
-	"luci-app-menuMove": {
-		"description": "Grant access to the LuCI menu tab organizer",
-		"read": {
-			"ubus": {
-				"menu_move": [ "status" ],
-				"file": [ "exec" ]
-			},
-			"file": {
-				"/usr/bin/menu-move json": [ "exec" ]
-			},
-			"uci": [ "menu-move" ]
-		},
-		"write": {
-			"ubus": {
-				"menu_move": [ "apply" ],
-				"file": [ "exec" ]
-			},
-			"file": {
-				"/usr/bin/menu-move apply": [ "exec" ]
-			},
-			"uci": [ "menu-move" ]
-		}
-	}
+  "luci-app-menuMove": {
+    "description": "Grant access to the LuCI menu tab organizer",
+    "read": {
+      "ubus": {
+        "file": [
+          "exec"
+        ]
+      },
+      "file": {
+        "/usr/bin/menu-move json": [
+          "exec"
+        ]
+      },
+      "uci": [
+        "menu-move"
+      ]
+    },
+    "write": {
+      "ubus": {
+        "file": [
+          "exec"
+        ]
+      },
+      "file": {
+        "/usr/bin/menu-move apply": [
+          "exec"
+        ]
+      },
+      "uci": [
+        "menu-move"
+      ]
+    }
+  }
 }
