@@ -209,7 +209,7 @@ return view.extend({
 
 		var o1 = s.option(form.ListValue, 'from', _('Tab to move'));
 		o1.rmempty = false;
-		o1.modalonly = false;
+		o1.modalonly = true;
 		o1.value('', _('-- please choose --'));
 		entries.forEach(function(e) {
 			o1.value(e.path, '%s [%s]'.format(_(e.title), e.path));
@@ -223,7 +223,7 @@ return view.extend({
 
 		var o2 = s.option(form.ListValue, 'to', _('Target section'));
 		o2.rmempty = false;
-		o2.modalonly = false;
+		o2.modalonly = true;
 		o2.value('', _('-- please choose --'));
 		entries.forEach(function(e) {
 			o2.value(e.path, '%s [%s]'.format(_(e.title), e.path));
@@ -232,19 +232,19 @@ return view.extend({
 		var o3 = s.option(form.Value, 'order', _('Order'));
 		o3.datatype = 'uinteger';
 		o3.placeholder = '100';
-		o3.modalonly = false;
+		o3.modalonly = true;
 
 		var o4 = s.option(form.Value, 'title', _('New title'));
-		o4.modalonly = false;
+		o4.modalonly = true;
 		o4.placeholder = _('keep original');
 
 		var o5 = s.option(form.Flag, 'hide_original', _('Hide the original tab'));
 		o5.default = '1';
-		o5.modalonly = false;
+		o5.modalonly = true;
 
 		var o6 = s.option(form.Flag, 'enabled', _('Enabled'));
 		o6.default = '1';
-		o6.modalonly = false;
+		o6.modalonly = true;
 
 		return m.render().then(function(mapNode) {
 			var blocks = [];
